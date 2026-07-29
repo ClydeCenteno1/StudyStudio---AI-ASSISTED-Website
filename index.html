@@ -1,0 +1,4075 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StudyStudio — Learning Suite</title>
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap"
+    rel="stylesheet">
+
+  <style>
+    :root {
+      --bg: #14181f;
+      --bg-alt: #1b212b;
+      --panel: #1f2631;
+      --card: #f4efe4;
+      --card-line: #b85450;
+      --ink: #ede9e0;
+      --ink-soft: #93a0b2;
+      --accent: #d8a438;
+      --accent-ink: #14181f;
+      --teal: #4fa98c;
+      --danger: #c1594b;
+      --border: rgba(237, 234, 226, 0.12);
+      --radius: 10px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: 'Inter', sans-serif;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    body {
+      background-image:
+        radial-gradient(circle at 15% 10%, rgba(216, 164, 56, 0.05), transparent 40%),
+        radial-gradient(circle at 85% 90%, rgba(79, 169, 140, 0.05), transparent 40%);
+      display: flex;
+      flex-direction: column;
+    }
+
+    ::selection {
+      background: var(--accent);
+      color: var(--accent-ink);
+    }
+
+    h1,
+    h2,
+    h3,
+    h4 {
+      font-family: 'Fraunces', serif;
+      margin: 0;
+    }
+
+    .mono {
+      font-family: 'IBM Plex Mono', monospace;
+      letter-spacing: 0.04em;
+    }
+
+    button {
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      border: none;
+    }
+
+    /* ---------- Topbar ---------- */
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 24px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg);
+      z-index: 10;
+      flex-shrink: 0;
+      height: 65px;
+    }
+
+    .brand-nav {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+    }
+
+    .brand-nav h1 {
+      font-size: 20px;
+      font-weight: 600;
+    }
+
+    .nav-tabs {
+      display: flex;
+      background: var(--panel);
+      padding: 4px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      gap: 4px;
+    }
+
+    .nav-tab {
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--ink-soft);
+      background: transparent;
+      transition: all 0.15s ease;
+    }
+
+    .nav-tab.active {
+      background: var(--accent);
+      color: var(--accent-ink);
+    }
+
+    .stamp {
+      font-size: 11px;
+      color: var(--ink-soft);
+      padding: 4px 9px;
+      border: 1px solid var(--border);
+      border-radius: 100px;
+    }
+
+    .topbar-actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .btn {
+      padding: 9px 16px;
+      border-radius: 7px;
+      font-size: 13.5px;
+      font-weight: 500;
+      transition: transform 0.12s ease, background 0.15s ease;
+    }
+
+    .btn:active {
+      transform: scale(0.97);
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: var(--accent-ink);
+    }
+
+    .btn-primary:hover {
+      background: #e5b04f;
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--ink);
+      border: 1px solid var(--border);
+    }
+
+    .btn-ghost:hover {
+      border-color: var(--ink-soft);
+    }
+
+    .icon-btn {
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      color: var(--ink-soft);
+      flex-shrink: 0;
+    }
+
+    .icon-btn:hover {
+      color: var(--ink);
+      border-color: var(--ink-soft);
+    }
+
+    /* ---------- App Views ---------- */
+    .app-view {
+      display: none;
+      flex: 1;
+      min-height: 0;
+    }
+
+    .app-view.active {
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ---------- DECK STYLES ---------- */
+    #deckView {
+      overflow-y: auto;
+    }
+
+    .deck-container {
+      width: 100%;
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 32px 28px 80px;
+    }
+
+    .folder-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 8px;
+      transition: transform 0.15s ease, border-color 0.15s ease;
+    }
+
+    .folder-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .btn-study-action {
+      width: 100%;
+      margin-top: 16px;
+    }
+
+    .folder-card:hover {
+      transform: translateY(-2px);
+      border-color: var(--accent);
+    }
+
+    .folder-title-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .folder-title {
+      font-size: 16px;
+      font-weight: 500;
+      color: var(--ink);
+      margin: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .folder-delete-btn {
+      background: transparent;
+      border: none;
+      color: var(--danger);
+      font-size: 14px;
+      padding: 4px;
+      border-radius: 4px;
+      opacity: 0;
+      transition: opacity 0.15s ease, background 0.15s ease;
+    }
+
+    #tutorChatList {
+      margin-top: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 320px;
+      overflow-y: auto;
+    }
+
+    /* Tutor Sidebar Items */
+    .tutor-chat-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 12px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 13px;
+      color: var(--ink);
+      cursor: pointer;
+      transition: border-color 0.15s ease;
+    }
+
+    .tutor-chat-item:hover {
+      border-color: var(--accent);
+    }
+
+    .tutor-chat-item span {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 140px;
+    }
+
+    .deleteTutorChat {
+      background: transparent;
+      border: none;
+      color: var(--ink-soft);
+      cursor: pointer;
+      border-radius: 4px;
+      padding: 4px;
+      transition: all 0.15s ease;
+    }
+
+    .deleteTutorChat:hover {
+      color: var(--danger);
+      background: rgba(193, 89, 75, 0.15);
+    }
+
+    .folder-card:hover .folder-delete-btn {
+      opacity: 1;
+    }
+
+    .folder-rename-btn,
+    .folder-delete-btn {
+      width: 30px;
+      height: 30px;
+      border: none;
+      background: transparent;
+      color: var(--ink-soft);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all .15s ease;
+      opacity: 0;
+    }
+
+    .folder-card:hover .folder-rename-btn,
+    .folder-card:hover .folder-delete-btn {
+      opacity: 1;
+    }
+
+    .folder-delete-btn:hover {
+      background: rgba(193, 89, 75, 0.15);
+    }
+
+    .folder-count {
+      font-size: 13px;
+      color: var(--ink-soft);
+    }
+
+    .empty {
+      max-width: 620px;
+      margin: 8vh auto 0;
+      padding: 0 24px;
+      text-align: center;
+    }
+
+    .empty h2 {
+      font-size: 40px;
+      font-weight: 500;
+      line-height: 1.15;
+      margin-bottom: 10px;
+    }
+
+    .empty p {
+      color: var(--ink-soft);
+      font-size: 15px;
+      margin-bottom: 28px;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 160px;
+      resize: vertical;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--ink);
+      font-family: 'Inter', sans-serif;
+      font-size: 14.5px;
+      line-height: 1.55;
+      padding: 16px;
+      outline: none;
+    }
+
+    textarea:focus {
+      border-color: var(--accent);
+    }
+
+    textarea::placeholder {
+      color: var(--ink-soft);
+    }
+
+    .deck-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 22px;
+    }
+
+    .deck-toolbar-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--ink-soft);
+      font-size: 13.5px;
+    }
+
+    .link-danger {
+      background: none;
+      color: var(--ink-soft);
+      font-size: 13px;
+      border: none;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    .link-danger:hover {
+      color: var(--danger);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+      gap: 18px;
+    }
+
+    .card-flip {
+      perspective: 1200px;
+      height: 180px;
+      position: relative;
+    }
+
+    .card-del {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: rgba(20, 24, 31, 0.55);
+      color: var(--ink);
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 5;
+      opacity: 0;
+      transition: opacity 0.15s ease, background 0.15s ease;
+    }
+
+    .card-flip:hover .card-del {
+      opacity: 1;
+    }
+
+    .card-del:hover {
+      background: var(--danger);
+    }
+
+    .card-inner {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      transform-style: preserve-3d;
+      transition: transform 0.5s cubic-bezier(0.4, 0.2, 0.2, 1);
+      cursor: pointer;
+    }
+
+    .card-flip.flipped .card-inner {
+      transform: rotateY(180deg);
+    }
+
+    .card-face {
+      position: absolute;
+      inset: 0;
+      backface-visibility: hidden;
+      background: var(--card);
+      color: #24211c;
+      border-radius: 6px;
+      padding: 20px 18px 16px;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .card-face::before {
+      content: "";
+      position: absolute;
+      top: 34px;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: var(--card-line);
+      opacity: 0.35;
+    }
+
+    .card-face .tag {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      color: #8a7f68;
+      margin-bottom: 14px;
+    }
+
+    .card-face .body {
+      font-size: 14.5px;
+      line-height: 1.45;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .card-back {
+      transform: rotateY(180deg);
+      background: #ece5d4;
+    }
+
+    /* ---------- STUDY MODE STYLES ---------- */
+    .study-container {
+      background: var(--bg-alt);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      width: 100%;
+      max-width: 640px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45);
+    }
+
+    .study-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 14px;
+    }
+
+    #studyDeckTitle {
+      font-size: 14px;
+      color: var(--accent);
+      font-weight: 500;
+    }
+
+    .study-card-wrapper {
+      height: 280px;
+      width: 100%;
+    }
+
+    .study-card-flip {
+      height: 100% !important;
+    }
+
+    .study-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn-study-action {
+      background: var(--accent);
+      color: var(--accent-ink);
+      font-size: 12.5px;
+      padding: 5px 10px;
+      border-radius: 6px;
+      font-weight: 600;
+      transition: background 0.15s ease;
+    }
+
+    .btn-study-action:hover {
+      background: #e5b04f;
+    }
+
+    .study-answer-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .study-answer-row input {
+      flex: 1;
+      min-width: 0;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--ink);
+      font-family: 'Inter', sans-serif;
+      font-size: 14.5px;
+      padding: 11px 14px;
+      outline: none;
+    }
+
+    .study-answer-row input:focus {
+      border-color: var(--accent);
+    }
+
+    .study-verdict {
+      font-size: 13.5px;
+      line-height: 1.5;
+      min-height: 1.4em;
+      padding: 0 2px;
+    }
+
+    .study-verdict.pending {
+      color: var(--ink-soft);
+    }
+
+    .study-verdict.right {
+      color: var(--teal);
+    }
+
+    .study-verdict.wrong {
+      color: var(--danger);
+    }
+
+    /* ---------- MODE SELECTOR ---------- */
+    .mode-choice-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 6px;
+    }
+
+    .mode-choice-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 4px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      padding: 14px 16px;
+      text-align: left;
+      transition: border-color 0.15s ease, transform 0.12s ease;
+    }
+
+    .mode-choice-btn:hover {
+      border-color: var(--accent);
+      transform: translateY(-1px);
+    }
+
+    .mode-choice-title {
+      font-size: 14.5px;
+      font-weight: 600;
+      color: var(--ink);
+    }
+
+    .mode-choice-desc {
+      font-size: 12.5px;
+      color: var(--ink-soft);
+      line-height: 1.4;
+    }
+
+    /* ---------- QUIZ MODE ---------- */
+    .quiz-question-box {
+      background: var(--card);
+      color: #24211c;
+      border-radius: 8px;
+      padding: 20px 18px;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.22);
+    }
+
+    .quiz-question-box .tag {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      color: #8a7f68;
+      margin-bottom: 10px;
+      display: block;
+    }
+
+    .quiz-question-box .body {
+      font-size: 15px;
+      line-height: 1.5;
+    }
+
+    .quiz-options {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .quiz-option-btn {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 13px 16px;
+      text-align: left;
+      font-size: 14px;
+      color: var(--ink);
+      transition: border-color 0.15s ease;
+    }
+
+    .quiz-option-btn:hover:not(:disabled) {
+      border-color: var(--accent);
+    }
+
+    .quiz-option-btn:disabled {
+      cursor: default;
+    }
+
+    .quiz-option-btn.correct {
+      border-color: var(--teal);
+      background: rgba(79, 169, 140, 0.12);
+    }
+
+    .quiz-option-btn.incorrect {
+      border-color: var(--danger);
+      background: rgba(193, 89, 75, 0.12);
+    }
+
+    .quiz-option-btn.selected {
+      border-color: var(--accent);
+      background: rgba(216, 164, 56, 0.12);
+    }
+
+    /* ---------- MOCK EXAM ---------- */
+    .exam-intro p {
+      font-size: 14px;
+      color: var(--ink-soft);
+      line-height: 1.55;
+      margin-bottom: 18px;
+    }
+
+    .exam-questions {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      max-height: 55vh;
+      overflow-y: auto;
+      padding-right: 4px;
+      margin-bottom: 16px;
+    }
+
+    .exam-q-block {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+    }
+
+    .exam-q-block .tag {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      color: var(--ink-soft);
+      margin-bottom: 8px;
+      display: block;
+    }
+
+    .exam-q-block .q-text {
+      font-size: 14.5px;
+      margin-bottom: 10px;
+      line-height: 1.45;
+    }
+
+    .exam-q-block input {
+      width: 100%;
+      background: var(--bg-alt);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      color: var(--ink);
+      padding: 10px 12px;
+      font-size: 13.5px;
+      font-family: 'Inter', sans-serif;
+      outline: none;
+    }
+
+    .exam-q-block input:focus {
+      border-color: var(--accent);
+    }
+
+    .exam-score-banner {
+      text-align: center;
+      font-family: 'Fraunces', serif;
+      font-size: 32px;
+      font-weight: 600;
+      padding: 20px 0;
+      color: var(--accent);
+    }
+
+    .exam-result-block {
+      border-left: 3px solid var(--border);
+      padding-left: 14px;
+    }
+
+    .exam-result-block.right {
+      border-left-color: var(--teal);
+    }
+
+    .exam-result-block.wrong {
+      border-left-color: var(--danger);
+    }
+
+    .exam-result-block .verdict-line {
+      font-size: 13px;
+      margin-top: 6px;
+      color: var(--ink-soft);
+    }
+
+    /* ---------- SOCRATIC TUTOR STYLES ---------- */
+    .socratic-main {
+      flex: 1;
+      display: flex;
+      min-height: 0;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    .sidebar {
+      width: 240px;
+      border-right: 1px solid var(--border);
+      padding: 18px 16px;
+      overflow-y: auto;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .sidebar h4 {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 10.5px;
+      letter-spacing: 0.08em;
+      color: var(--ink-soft);
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .sidebar-section p {
+      font-size: 12.5px;
+      color: var(--ink-soft);
+      line-height: 1.55;
+      margin: 0;
+    }
+
+    .timer-box {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 14px;
+    }
+
+    .timer-value {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 20px;
+      color: var(--ink);
+    }
+
+    .timer-label {
+      font-size: 11px;
+      color: var(--ink-soft);
+      margin-top: 2px;
+    }
+
+    .chat-col {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      min-height: 0;
+      height: 100%;
+      position: relative;
+    }
+
+    .chat-scroll {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px 20px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      min-height: 0;
+    }
+
+    .msg-row {
+      display: flex;
+      max-width: 780px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    .msg-row.user {
+      justify-content: flex-end;
+    }
+
+    .msg-row.tutor {
+      justify-content: flex-start;
+    }
+
+    .bubble {
+      max-width: 88%;
+      padding: 14px 18px;
+      border-radius: 12px;
+      font-size: 14.5px;
+      line-height: 1.6;
+    }
+
+    .bubble p {
+      margin: 0 0 10px;
+    }
+
+    .bubble p:last-child {
+      margin-bottom: 0;
+    }
+
+    .msg-row.user .bubble {
+      background: var(--accent);
+      color: var(--accent-ink);
+      border-bottom-right-radius: 3px;
+    }
+
+    .msg-row.tutor .bubble {
+      background: var(--card);
+      color: #24211c;
+      border-bottom-left-radius: 3px;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22);
+    }
+
+    .tutor-label {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.06em;
+      color: #8a7f68;
+      margin-bottom: 8px;
+      display: block;
+    }
+
+    .composer {
+      border-top: 1px solid var(--border);
+      padding: 14px 20px 18px;
+      flex-shrink: 0;
+      background: var(--bg);
+      width: 100%;
+    }
+
+    .quick-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      max-width: 780px;
+      margin: 0 auto 12px;
+    }
+
+    .quick-btn {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      color: var(--ink-soft);
+      font-size: 12px;
+      padding: 6px 12px;
+      border-radius: 100px;
+    }
+
+    .quick-btn:hover {
+      border-color: var(--accent);
+      color: var(--ink);
+    }
+
+    .composer-inner {
+      max-width: 780px;
+      margin: 0 auto;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .composer textarea {
+      flex: 1;
+      min-width: 0;
+      resize: none;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--ink);
+      font-family: 'Inter', sans-serif;
+      font-size: 14.5px;
+      line-height: 1.4;
+      padding: 11px 14px;
+      outline: none;
+      height: 44px;
+      min-height: 44px;
+      max-height: 140px;
+      box-sizing: border-box;
+    }
+
+    .composer .icon-btn {
+      width: 44px;
+      height: 44px;
+      flex-shrink: 0;
+    }
+
+    .composer .btn-primary {
+      height: 44px;
+      padding: 0 20px;
+      flex-shrink: 0;
+    }
+
+    /* ---------- OVERLAYS & MODALS ---------- */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(10, 12, 16, 0.6);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 70;
+      padding: 20px;
+    }
+
+    .overlay.open {
+      display: flex;
+    }
+
+    .modal {
+      background: var(--bg-alt);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      width: 100%;
+      max-width: 480px;
+      padding: 26px;
+    }
+
+    .modal h3 {
+      font-size: 19px;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .modal .sub {
+      color: var(--ink-soft);
+      font-size: 13px;
+      margin-bottom: 18px;
+    }
+
+    .field {
+      margin-bottom: 14px;
+    }
+
+    .field label {
+      display: block;
+      font-size: 12.5px;
+      color: var(--ink-soft);
+      margin-bottom: 6px;
+    }
+
+    /* Form Fields and Custom Select Design */
+    .field input,
+    .field textarea,
+    .field select {
+      width: 100%;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      color: var(--ink);
+      padding: 10px 12px;
+      font-size: 14px;
+      font-family: 'Inter', sans-serif;
+      outline: none;
+    }
+
+    .field input:focus,
+    .field textarea:focus,
+    .field select:focus {
+      border-color: var(--accent);
+    }
+
+    .field select {
+      cursor: pointer;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      appearance: none;
+      background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2393a0b2' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      background-size: 16px;
+      padding-right: 40px;
+    }
+
+    .field select option {
+      background: var(--panel);
+      color: var(--ink);
+    }
+
+    .field .note {
+      font-size: 11.5px;
+      color: var(--ink-soft);
+      margin-top: 5px;
+    }
+
+    .field .note a {
+      color: var(--teal);
+    }
+
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    /* ---------- LANDING / SELECTION SCREEN ---------- */
+    #landingScreen {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      background: var(--bg);
+      background-image:
+        radial-gradient(circle at 15% 10%, rgba(216, 164, 56, 0.06), transparent 40%),
+        radial-gradient(circle at 85% 90%, rgba(79, 169, 140, 0.06), transparent 40%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      overflow-y: auto;
+    }
+
+    .landing-inner {
+      width: 100%;
+      max-width: 980px;
+      text-align: center;
+    }
+
+    .landing-inner h1 {
+      font-size: 34px;
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+
+    .landing-inner .sub {
+      color: var(--ink-soft);
+      font-size: 15px;
+      margin-bottom: 36px;
+    }
+
+    .landing-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 18px;
+    }
+
+    .landing-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 28px 22px;
+      text-align: left;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      transition: transform 0.15s ease, border-color 0.15s ease;
+    }
+
+    .landing-card:hover {
+      transform: translateY(-3px);
+      border-color: var(--accent);
+    }
+
+    .landing-card .icon {
+      font-size: 30px;
+    }
+
+    .landing-card h3 {
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .landing-card p {
+      color: var(--ink-soft);
+      font-size: 13px;
+      line-height: 1.5;
+      margin: 0;
+      flex: 1;
+    }
+
+    .landing-card .go {
+      margin-top: 8px;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--accent);
+      font-family: 'IBM Plex Mono', monospace;
+      letter-spacing: 0.04em;
+    }
+
+    .back-to-menu-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* ---------- MOCK MAKER ---------- */
+    #makerView {
+      overflow-y: auto;
+    }
+
+    .maker-container {
+      width: 100%;
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 32px 28px 80px;
+    }
+
+    .maker-container h2 {
+      font-size: 22px;
+      margin-bottom: 4px;
+    }
+
+    .maker-container .sub {
+      color: var(--ink-soft);
+      font-size: 13.5px;
+      margin-bottom: 28px;
+    }
+
+    .maker-field {
+      margin-bottom: 20px;
+    }
+
+    .maker-field label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--ink);
+      margin-bottom: 8px;
+    }
+
+    .maker-field .hint-text {
+      font-size: 11.5px;
+      color: var(--ink-soft);
+      margin-top: 6px;
+    }
+
+    .maker-field textarea,
+    .maker-field input[type="text"],
+    .maker-field input[type="number"],
+    .maker-field select {
+      width: 100%;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--ink);
+      padding: 11px 13px;
+      font-size: 14px;
+      font-family: 'Inter', sans-serif;
+      outline: none;
+    }
+
+    .maker-field select {
+      cursor: pointer;
+      -webkit-appearance: none;
+      appearance: none;
+      background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2393a0b2' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      background-size: 16px;
+      padding-right: 40px;
+    }
+
+    .maker-field textarea:focus,
+    .maker-field input:focus,
+    .maker-field select:focus {
+      border-color: var(--accent);
+    }
+
+    .pill-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .pill-btn {
+      padding: 9px 15px;
+      border-radius: 100px;
+      font-size: 13px;
+      font-weight: 500;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      color: var(--ink-soft);
+      transition: all 0.12s ease;
+    }
+
+    .pill-btn.active {
+      background: var(--accent);
+      color: var(--accent-ink);
+      border-color: var(--accent);
+    }
+
+    .maker-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .file-drop-zone {
+      border: 1.5px dashed var(--border);
+      border-radius: 10px;
+      padding: 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.15s ease, background 0.15s ease;
+    }
+
+    .file-drop-zone:hover,
+    .file-drop-zone.drag-over {
+      border-color: var(--accent);
+      background: rgba(216, 164, 56, 0.05);
+    }
+
+    .file-drop-zone .dz-icon {
+      font-size: 22px;
+      margin-bottom: 6px;
+    }
+
+    .file-drop-zone .dz-text {
+      font-size: 13px;
+      color: var(--ink-soft);
+    }
+
+    .attached-files-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-top: 10px;
+    }
+
+    .attached-file-chip {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 8px 12px;
+      font-size: 12.5px;
+      color: var(--ink);
+    }
+
+    .attached-file-chip .remove-file-btn {
+      background: transparent;
+      color: var(--danger);
+      padding: 2px 6px;
+      font-size: 13px;
+    }
+
+    /* ---------- QUIZ/EXAM Q-TYPE + HINT + SIDE TUTOR ---------- */
+    .qtype-tag {
+      display: inline-block;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.06em;
+      color: var(--accent);
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      padding: 2px 9px;
+      margin-bottom: 8px;
+    }
+
+    .hint-row {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin: 4px 0 2px;
+    }
+
+    .hint-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--accent);
+      font-size: 12.5px;
+      font-weight: 500;
+      padding: 7px 13px;
+      border-radius: 100px;
+    }
+
+    .hint-btn:hover {
+      border-color: var(--accent);
+    }
+
+    .hint-btn:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+
+    .hint-box {
+      display: none;
+      background: rgba(216, 164, 56, 0.08);
+      border: 1px solid rgba(216, 164, 56, 0.35);
+      border-radius: 8px;
+      padding: 10px 13px;
+      font-size: 13px;
+      color: var(--ink);
+      margin: 6px 0;
+      line-height: 1.5;
+    }
+
+    .hint-box.shown {
+      display: block;
+    }
+
+    .ask-tutor-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--teal);
+      font-size: 12.5px;
+      font-weight: 500;
+      padding: 7px 13px;
+      border-radius: 100px;
+    }
+
+    .ask-tutor-btn:hover {
+      border-color: var(--teal);
+    }
+
+    /* Side tutor drawer, usable from inside quiz/exam overlays */
+    .side-tutor-drawer {
+      position: fixed;
+      top: 0;
+      right: -420px;
+      width: 400px;
+      max-width: 92vw;
+      height: 100%;
+      background: var(--bg-alt);
+      border-left: 1px solid var(--border);
+      z-index: 90;
+      display: flex;
+      flex-direction: column;
+      transition: right 0.22s ease;
+      box-shadow: -8px 0 24px rgba(0, 0, 0, 0.3);
+    }
+
+    .side-tutor-drawer.open {
+      right: 0;
+    }
+
+    .side-tutor-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .side-tutor-header h4 {
+      font-size: 14.5px;
+      font-weight: 600;
+    }
+
+    .side-tutor-chat {
+      flex: 1;
+      overflow-y: auto;
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .side-tutor-composer {
+      border-top: 1px solid var(--border);
+      padding: 12px 14px;
+      flex-shrink: 0;
+      display: flex;
+      gap: 8px;
+    }
+
+    .side-tutor-composer textarea {
+      flex: 1;
+      resize: none;
+      height: 40px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      color: var(--ink);
+      padding: 9px 11px;
+      font-size: 13px;
+      font-family: 'Inter', sans-serif;
+      outline: none;
+    }
+
+    .float-tutor-fab {
+      position: fixed;
+      bottom: 26px;
+      right: 26px;
+      z-index: 60;
+      background: var(--teal);
+      color: #0e1712;
+      border-radius: 100px;
+      padding: 12px 18px;
+      font-size: 13px;
+      font-weight: 600;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+      display: none;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .float-tutor-fab.visible {
+      display: flex;
+    }
+
+    .maker-loading {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      color: var(--ink-soft);
+      font-size: 13px;
+      margin-top: 14px;
+    }
+
+    .maker-loading.active {
+      display: flex;
+    }
+
+    .spinner {
+      width: 15px;
+      height: 15px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      animation: spin 0.7s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    /* =========================================================
+       RESPONSIVE OVERHAUL
+       ========================================================= */
+
+    /* Mobile viewport height fix: 100vh is unreliable on phones
+       because browser chrome (address bar) resizes it. Use the
+       small-viewport unit with a fallback. */
+    html, body {
+      height: 100vh;
+      height: 100svh;
+    }
+
+    /* Sidebar drawer toggle (mobile) — hidden by default via
+       transform rather than display:none, so JS can open it. */
+    .sidebar-drawer-toggle {
+      display: none;
+    }
+    .sidebar-scrim {
+      display: none;
+    }
+
+    @media (max-width: 640px) {
+      .sidebar-drawer-toggle {
+        position: absolute;
+        top: 12px;
+        left: 12px;
+        z-index: 20;
+        background: var(--panel);
+      }
+    }
+
+    @media (max-width: 900px) {
+      .landing-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 980px) {
+      .side-tutor-drawer {
+        width: 360px;
+      }
+    }
+
+    /* ---------- Tablet & below ---------- */
+    @media (max-width: 860px) {
+      .topbar {
+        height: auto;
+        min-height: 60px;
+        padding: 10px 14px;
+        flex-wrap: wrap;
+        row-gap: 8px;
+      }
+
+      .brand-nav {
+        gap: 12px;
+        min-width: 0;
+      }
+
+      .brand-nav h1 {
+        font-size: 17px;
+      }
+
+      .nav-tabs {
+        order: 3;
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        justify-content: flex-start;
+      }
+
+      .nav-tabs::-webkit-scrollbar {
+        display: none;
+      }
+
+      .nav-tab {
+        white-space: nowrap;
+        flex-shrink: 0;
+        padding: 7px 12px;
+      }
+
+      .topbar-actions {
+        gap: 6px;
+      }
+
+      #cardCountStamp {
+        display: none;
+      }
+
+      .deck-container,
+      .maker-container {
+        padding: 20px 16px 60px;
+      }
+
+      .deck-toolbar {
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      .deck-toolbar-left {
+        flex-wrap: wrap;
+        row-gap: 6px;
+      }
+
+      .grid {
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 12px;
+      }
+
+      .card-flip {
+        height: 150px;
+      }
+
+      .landing-inner h1 {
+        font-size: 26px;
+      }
+
+      .side-tutor-drawer {
+        width: 100%;
+        max-width: 100vw;
+        right: -100%;
+      }
+
+      .float-tutor-fab {
+        bottom: 16px;
+        right: 16px;
+        padding: 10px 14px;
+        font-size: 12.5px;
+      }
+    }
+
+    /* ---------- Phones ---------- */
+    @media (max-width: 640px) {
+      .landing-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .landing-inner h1 {
+        font-size: 22px;
+      }
+
+      .landing-inner .sub {
+        font-size: 13.5px;
+        margin-bottom: 24px;
+      }
+
+      .landing-card {
+        padding: 20px 18px;
+      }
+
+      .maker-row {
+        grid-template-columns: 1fr;
+      }
+
+      .overlay {
+        padding: 0;
+        align-items: flex-end;
+      }
+
+      .overlay .modal,
+      .overlay .study-container {
+        max-width: 100%;
+        width: 100%;
+        border-radius: 14px 14px 0 0;
+        max-height: 92svh;
+        overflow-y: auto;
+      }
+
+      .study-header {
+        flex-wrap: wrap;
+        row-gap: 8px;
+      }
+
+      .study-card-wrapper {
+        height: 220px;
+      }
+
+      .study-controls {
+        flex-wrap: wrap;
+      }
+
+      .study-controls .btn {
+        flex: 1;
+        min-width: 120px;
+      }
+
+      /* Socratic tutor becomes a single column with a slide-out
+         conversation drawer instead of vanishing entirely. */
+      .socratic-main {
+        position: relative;
+      }
+
+      .sidebar {
+        display: flex;
+        position: fixed;
+        top: 0;
+        left: -280px;
+        width: 260px;
+        height: 100%;
+        background: var(--bg-alt);
+        z-index: 95;
+        box-shadow: 8px 0 24px rgba(0, 0, 0, 0.35);
+        transition: left 0.2s ease;
+        border-right: 1px solid var(--border);
+      }
+
+      .sidebar.open {
+        left: 0;
+      }
+
+      .sidebar-scrim {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(10, 12, 16, 0.55);
+        z-index: 94;
+      }
+
+      .sidebar-scrim.open {
+        display: block;
+      }
+
+      .sidebar-drawer-toggle {
+        display: flex;
+      }
+
+      .chat-scroll {
+        padding-top: 56px;
+      }
+
+      .msg-row {
+        max-width: 100%;
+      }
+
+      .quick-actions {
+        max-width: 100%;
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 4px;
+      }
+
+      .quick-btn {
+        flex-shrink: 0;
+      }
+
+      .composer {
+        padding: 10px 12px 14px;
+      }
+
+      .composer-inner {
+        max-width: 100%;
+      }
+
+      .exam-q-block input,
+      .maker-field input,
+      .maker-field textarea,
+      .maker-field select {
+        font-size: 16px;
+        /* 16px prevents iOS Safari from auto-zooming on focus */
+      }
+
+      .side-tutor-composer {
+        padding-bottom: max(12px, env(safe-area-inset-bottom));
+      }
+
+      .modal-actions {
+        flex-wrap: wrap;
+      }
+
+      .modal-actions .btn {
+        flex: 1;
+      }
+    }
+
+    @media (max-width: 420px) {
+      .brand-nav h1 {
+        display: none;
+      }
+
+      .nav-tab {
+        font-size: 12px;
+        padding: 6px 9px;
+      }
+
+      .quiz-option-btn {
+        padding: 11px 13px;
+        font-size: 13.5px;
+      }
+
+      .exam-score-banner {
+        font-size: 24px;
+        padding: 14px 0;
+      }
+
+      .quiz-question-box .body {
+        font-size: 14px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- LANDING / SELECTION SCREEN -->
+  <div id="landingScreen">
+    <div class="landing-inner">
+      <h1>StudyStudio</h1>
+      <div class="sub">What do you want to do today?</div>
+      <div class="landing-grid">
+        <button class="landing-card" id="landingFlashcardBtn">
+          <div class="icon">⚡</div>
+          <h3>Flashcards</h3>
+          <p>Paste your notes and get a full deck of flashcards. Study, flip, and self-check with AI grading.</p>
+          <div class="go">OPEN →</div>
+        </button>
+        <button class="landing-card" id="landingMakerBtn">
+          <div class="icon">📝</div>
+          <h3>Mock Quiz &amp; Exam Maker</h3>
+          <p>Give a topic, upload notes/photos/PDFs, and choose your question types. Get a custom quiz or timed exam, complete with hints.</p>
+          <div class="go">OPEN →</div>
+        </button>
+        <button class="landing-card" id="landingSocraticBtn">
+          <div class="icon">🏛️</div>
+          <h3>Socratic Tutor</h3>
+          <p>Stuck on a problem? Talk it through step-by-step with a tutor that asks guiding questions instead of just giving answers.</p>
+          <div class="go">OPEN →</div>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Universal Topbar -->
+  <div class="topbar">
+    <div class="brand-nav">
+      <button class="icon-btn back-to-menu-btn" id="backToMenuBtn" title="Back to menu">☰</button>
+      <h1>StudyStudio</h1>
+      <div class="nav-tabs">
+        <button class="nav-tab active" id="tabDeckBtn">⚡ Flashcard Deck</button>
+        <button class="nav-tab" id="tabMakerBtn">📝 Mock Quiz &amp; Exam</button>
+        <button class="nav-tab" id="tabSocraticBtn">🏛️ Socratic Tutor</button>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <span class="stamp mono" id="cardCountStamp">0 CARDS</span>
+      <button class="icon-btn" id="openSettingsBtn" title="Settings" aria-label="Settings">⚙</button>
+    </div>
+  </div>
+
+  <!-- VIEW 1: DECK -->
+  <div class="app-view active" id="deckView">
+    <div class="empty" id="emptyState">
+      <h2>Paste something.<br>Get a deck.</h2>
+      <p>Drop in your notes or topic. The AI generates flashcards for key concepts.</p>
+      <textarea id="firstText" placeholder="Paste your notes here…"></textarea>
+      <button class="btn btn-primary" id="firstGenBtn" style="margin-top:16px; width:100%; padding:13px;">Generate
+        flashcards</button>
+    </div>
+
+    <div class="deck-container" id="deckWrap" style="display:none;">
+      <div class="deck-toolbar">
+        <div class="deck-toolbar-left mono" id="deckLabel">YOUR DECKS</div>
+        <div style="display:flex; gap:10px;">
+          <button class="btn btn-primary" id="newDeckToggleBtn" style="padding:8px 16px;">+ New Deck</button>
+          <button class="link-danger" id="clearDeckBtn">Clear Deck</button>
+        </div>
+      </div>
+
+      <div id="newDeckPanel"
+        style="display:none; margin-bottom:24px; background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:20px;">
+        <textarea id="firstTextInline" placeholder="Paste your notes here…"></textarea>
+        <button class="btn btn-primary" id="firstGenBtnInline"
+          style="margin-top:14px; width:100%; padding:13px;">Generate flashcards</button>
+      </div>
+
+      <div class="grid" id="grid"></div>
+    </div>
+  </div>
+
+  <!-- VIEW: MOCK QUIZ & EXAM MAKER -->
+  <div class="app-view" id="makerView">
+    <div class="maker-container">
+      <h2>Mock Quiz &amp; Exam Maker</h2>
+      <div class="sub">Tell it the topic and how you want to be tested — it builds the best mock quiz or exam it can from everything you give it.</div>
+
+      <div class="maker-field">
+        <label for="makerTopic">Topic / instructions</label>
+        <textarea id="makerTopic" rows="3" placeholder="e.g. Photosynthesis (light-dependent & light-independent reactions), focus on the Calvin cycle steps..."></textarea>
+        <div class="hint-text">Be as specific as you like — chapters to cover, things to skip, difficulty level, anything.</div>
+      </div>
+
+      <div class="maker-field">
+        <label>Attach notes, photos, or PDFs (optional)</label>
+        <div class="file-drop-zone" id="makerDropZone">
+          <div class="dz-icon">📎</div>
+          <div class="dz-text">Click to upload, or drag files here — images and PDFs work</div>
+        </div>
+        <input type="file" id="makerFileInput" accept="image/*,application/pdf" multiple style="display:none;">
+        <div class="attached-files-list" id="makerFileList"></div>
+      </div>
+
+      <div class="maker-row">
+        <div class="maker-field">
+          <label>Question types</label>
+          <div class="pill-group" id="makerQTypeGroup">
+            <button class="pill-btn active" data-qtype="mixed">Mixed (best of both)</button>
+            <button class="pill-btn" data-qtype="mc">Multiple choice only</button>
+            <button class="pill-btn" data-qtype="identification">Identification only</button>
+          </div>
+        </div>
+        <div class="maker-field">
+          <label for="makerCount">Number of questions</label>
+          <input type="number" id="makerCount" min="3" max="50" value="10">
+        </div>
+      </div>
+
+      <div class="maker-row">
+        <div class="maker-field">
+          <label>Format</label>
+          <div class="pill-group" id="makerFormatGroup">
+            <button class="pill-btn active" data-format="quiz">Mock Quiz (one at a time)</button>
+            <button class="pill-btn" data-format="exam">Mock Exam (timed, all at once)</button>
+          </div>
+        </div>
+        <div class="maker-field">
+          <label for="makerDifficulty">Difficulty</label>
+          <select id="makerDifficulty">
+            <option value="easy">Easy — building familiarity</option>
+            <option value="medium" selected>Medium — typical test level</option>
+            <option value="hard">Hard — push my understanding</option>
+          </select>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" id="makerGenerateBtn" style="width:100%; padding:14px;">Build my quiz/exam</button>
+      <div class="maker-loading" id="makerLoading"><div class="spinner"></div><span id="makerLoadingText">Reading your material and writing questions…</span></div>
+    </div>
+  </div>
+
+  <!-- VIEW 2: SOCRATIC TUTOR -->
+  <div class="app-view" id="socraticView">
+    <div class="socratic-main">
+      <div class="sidebar-scrim" id="sidebarScrim"></div>
+      <div class="sidebar" id="socraticSidebar">
+        <div class="sidebar-section">
+          <h4>Conversations</h4>
+
+          <button class="btn btn-primary" id="newTutorChatBtn" style="width: 100%; margin-bottom: 12px;">
+            + New Conversation
+          </button>
+
+          <div id="tutorChatList"></div>
+        </div>
+
+        <div class="timer-box">
+          <div class="timer-value" id="socraticTimer">00:00</div>
+          <div class="timer-label">Session Focus Time</div>
+        </div>
+      </div>
+
+      <div class="chat-col">
+        <button class="icon-btn sidebar-drawer-toggle" id="sidebarDrawerToggleBtn" title="Conversations">☰</button>
+        <div class="chat-scroll" id="socraticChat">
+          <!-- Chat messages appended here -->
+        </div>
+
+        <div class="composer">
+          <div class="quick-actions">
+            <button class="quick-btn" data-prompt="Give me a small hint for the next step.">💡 Give hint</button>
+            <button class="quick-btn" data-prompt="Can you explain that step simpler or with an analogy?">🧩 Explain
+              simpler</button>
+            <button class="quick-btn" data-prompt="Check my logic so far. Am I on the right track?">🔍 Check my
+              work</button>
+            <button class="quick-btn" data-prompt="Let's start a fresh problem!">✨ New problem</button>
+          </div>
+          <div class="composer-inner">
+            <label class="icon-btn" for="socraticImageInput" title="Upload problem photo"
+              style="cursor:pointer;">📷</label>
+            <input type="file" id="socraticImageInput" accept="image/*" style="display:none;">
+            <textarea id="socraticInput" placeholder="Type your problem or step here..."></textarea>
+            <button class="btn btn-primary" id="socraticSendBtn">Send</button>
+          </div>
+          <div class="upload-filenames" id="socraticImageName" style="max-width:780px; margin: 6px auto 0;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODE SELECTOR MODAL -->
+  <div class="overlay" id="modeSelectOverlay">
+    <div class="modal">
+      <h3>How do you want to study?</h3>
+      <div class="sub" id="modeSelectDeckName">Deck name</div>
+      <div class="mode-choice-list">
+        <button class="mode-choice-btn" data-mode="flashcards">
+          <span class="mode-choice-title">⚡ Flashcards</span>
+          <span class="mode-choice-desc">Flip through cards, type answers, get instant AI feedback.</span>
+        </button>
+        <button class="mode-choice-btn" data-mode="quiz">
+          <span class="mode-choice-title">🎯 Quiz Mode</span>
+          <span class="mode-choice-desc">Multiple-choice questions generated from your cards, one at a time.</span>
+        </button>
+        <button class="mode-choice-btn" data-mode="exam">
+          <span class="mode-choice-title">📝 Mock Exam</span>
+          <span class="mode-choice-desc">Timed, all questions up front, graded together at the end.</span>
+        </button>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" id="modeSelectCancelBtn">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- QUIZ MODE OVERLAY -->
+  <div class="overlay" id="quizOverlay">
+    <div class="study-container">
+      <div class="study-header">
+        <span id="quizDeckTitle" class="mono">DECK NAME</span>
+        <span id="quizScore" class="stamp mono">0 right · 0 wrong</span>
+        <span id="quizProgress" class="stamp mono">1 / 10</span>
+        <button class="icon-btn" id="closeQuizBtn" title="Close">✕</button>
+      </div>
+
+      <div class="quiz-question-box">
+        <div class="tag">QUESTION</div>
+        <div class="body" id="quizQuestionText"></div>
+      </div>
+
+      <div class="quiz-options" id="quizOptions"></div>
+      <div class="study-verdict" id="quizVerdict"></div>
+
+      <div class="study-controls">
+        <span></span>
+        <button class="btn btn-primary" id="quizNextBtn" disabled>Next →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MOCK EXAM OVERLAY -->
+  <div class="overlay" id="examOverlay">
+    <div class="study-container" style="max-width:760px;">
+      <div class="study-header">
+        <span id="examDeckTitle" class="mono">DECK NAME</span>
+        <span id="examTimer" class="stamp mono">00:00</span>
+        <button class="icon-btn" id="closeExamBtn" title="Close">✕</button>
+      </div>
+
+      <div id="examIntro" class="exam-intro">
+        <p>This will pull every card in the deck into one timed exam. Answer each question, then submit at the end to
+          see your full results.</p>
+        <button class="btn btn-primary" id="examStartBtn" style="width:100%; padding:13px;">Start Exam</button>
+      </div>
+
+      <div id="examBody" style="display:none;">
+        <div class="exam-questions" id="examQuestions"></div>
+        <div class="study-controls">
+          <span class="mono" id="examAnsweredCount" style="color:var(--ink-soft); font-size:12.5px;"></span>
+          <button class="btn btn-primary" id="examSubmitBtn">Submit Exam</button>
+        </div>
+      </div>
+
+      <div id="examResults" style="display:none;">
+        <div class="exam-score-banner" id="examScoreBanner"></div>
+        <div class="exam-questions" id="examResultsList"></div>
+        <div class="study-controls">
+          <span></span>
+          <button class="btn btn-primary" id="examCloseResultsBtn">Done</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STUDY MODE OVERLAY -->
+  <div class="overlay" id="studyOverlay">
+    <div class="study-container">
+      <div class="study-header">
+        <span id="studyDeckTitle" class="mono">DECK NAME</span>
+        <span id="studyScore" class="stamp mono">0 right · 0 wrong</span>
+        <span id="studyProgress" class="stamp mono">1 / 10</span>
+        <button class="icon-btn" id="closeStudyBtn" title="Close">✕</button>
+      </div>
+
+      <div class="study-card-wrapper">
+        <div class="card-flip study-card-flip" id="studyCardFlip">
+          <div class="card-inner">
+            <div class="card-face card-front">
+              <div class="tag">QUESTION</div>
+              <div class="body" id="studyFrontText"></div>
+            </div>
+            <div class="card-face card-back">
+              <div class="tag">ANSWER</div>
+              <div class="body" id="studyBackText"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="study-answer-row" id="studyAnswerRow">
+        <input type="text" id="studyAnswerInput" placeholder="Type your answer, then check it…" autocomplete="off">
+        <button class="btn btn-primary" id="studyCheckBtn">Check</button>
+      </div>
+      <div class="study-verdict" id="studyVerdict"></div>
+
+      <div class="study-controls">
+        <button class="btn btn-ghost" id="studyPrevBtn">← Previous</button>
+        <button class="btn btn-primary" id="studyFlipBtn">Flip Card (Space)</button>
+        <button class="btn btn-ghost" id="studyNextBtn">Next →</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- MAKER QUIZ OVERLAY (one question at a time) -->
+  <div class="overlay" id="makerQuizOverlay">
+    <div class="study-container">
+      <div class="study-header">
+        <span id="makerQuizTitle" class="mono">MOCK QUIZ</span>
+        <span id="makerQuizScore" class="stamp mono">0 right · 0 wrong</span>
+        <span id="makerQuizProgress" class="stamp mono">1 / 10</span>
+        <button class="icon-btn" id="closeMakerQuizBtn" title="Close">✕</button>
+      </div>
+
+      <div class="qtype-tag" id="makerQuizQTypeTag">MULTIPLE CHOICE</div>
+      <div class="quiz-question-box">
+        <div class="tag">QUESTION</div>
+        <div class="body" id="makerQuizQuestionText"></div>
+      </div>
+
+      <div class="quiz-options" id="makerQuizOptions"></div>
+      <div id="makerQuizIdWrap" style="display:none;">
+        <div class="study-answer-row">
+          <input type="text" id="makerQuizIdInput" placeholder="Type your answer, then check it…" autocomplete="off">
+          <button class="btn btn-primary" id="makerQuizIdCheckBtn">Check</button>
+        </div>
+      </div>
+
+      <div class="hint-row">
+        <button class="ask-tutor-btn" id="makerQuizAskTutorBtn">🏛️ Ask the tutor</button>
+        <button class="hint-btn" id="makerQuizHintBtn">💡 Get a hint</button>
+      </div>
+      <div class="hint-box" id="makerQuizHintBox"></div>
+
+      <div class="study-verdict" id="makerQuizVerdict"></div>
+
+      <div class="study-controls">
+        <span></span>
+        <button class="btn btn-primary" id="makerQuizNextBtn" disabled>Next →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAKER EXAM OVERLAY (all at once, timed) -->
+  <div class="overlay" id="makerExamOverlay">
+    <div class="study-container" style="max-width:780px;">
+      <div class="study-header">
+        <span id="makerExamTitle" class="mono">MOCK EXAM</span>
+        <span id="makerExamTimer" class="stamp mono">00:00</span>
+        <button class="icon-btn" id="closeMakerExamBtn" title="Close">✕</button>
+      </div>
+
+      <div id="makerExamIntro" class="exam-intro">
+        <p id="makerExamIntroText">This exam has questions built from your topic and materials. Answer each one, then submit at the end to see your full results with feedback.</p>
+        <button class="btn btn-primary" id="makerExamStartBtn" style="width:100%; padding:13px;">Start Exam</button>
+      </div>
+
+      <div id="makerExamBody" style="display:none;">
+        <div class="exam-questions" id="makerExamQuestions"></div>
+        <div class="study-controls">
+          <span class="mono" id="makerExamAnsweredCount" style="color:var(--ink-soft); font-size:12.5px;"></span>
+          <button class="btn btn-primary" id="makerExamSubmitBtn">Submit Exam</button>
+        </div>
+      </div>
+
+      <div id="makerExamResults" style="display:none;">
+        <div class="exam-score-banner" id="makerExamScoreBanner"></div>
+        <div class="exam-questions" id="makerExamResultsList"></div>
+        <div class="study-controls">
+          <span></span>
+          <button class="btn btn-primary" id="makerExamCloseResultsBtn">Done</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FLOATING "ASK THE TUTOR" BUTTON (shown while inside a maker quiz/exam) -->
+  <button class="float-tutor-fab" id="floatTutorFab">🏛️ Ask the Tutor</button>
+
+  <!-- SIDE TUTOR DRAWER (Socratic help, reachable from inside quiz/exam) -->
+  <div class="side-tutor-drawer" id="sideTutorDrawer">
+    <div class="side-tutor-header">
+      <h4>🏛️ Socratic Tutor</h4>
+      <button class="icon-btn" id="closeSideTutorBtn" title="Close">✕</button>
+    </div>
+    <div class="side-tutor-chat" id="sideTutorChat"></div>
+    <div class="side-tutor-composer">
+      <textarea id="sideTutorInput" placeholder="Ask about this question…"></textarea>
+      <button class="btn btn-primary" id="sideTutorSendBtn">Send</button>
+    </div>
+  </div>
+
+  <!-- SETTINGS MODAL -->
+  <div class="overlay" id="settingsOverlay">
+    <div class="modal">
+      <h3>Settings</h3>
+      <div class="sub">Your Gemini API key is stored locally in your browser.</div>
+      <div class="field">
+        <label for="apiKeyInput">Gemini API Key</label>
+        <input type="password" id="apiKeyInput" placeholder="Paste your API key">
+        <div class="note">Get a free key at <a href="https://aistudio.google.com/apikey" target="_blank"
+            rel="noopener">aistudio.google.com/apikey</a></div>
+      </div>
+      <div class="field">
+        <label for="modelSelect">AI Model</label>
+        <select id="modelSelect">
+          <option value="gemini-2.5-flash">Gemini 2.5 Flash (Free, Recommended)</option>
+          <option value="gemini-3.5-flash">Gemini 3.5 Flash (Free, Fast)</option>
+          <option value="gemini-2.5-pro">Gemini 2.5 Pro (Free, Powerful)</option>
+          <option value="gemini-1.5-flash">Gemini 1.5 Flash (Legacy)</option>
+          <option value="gemini-1.5-pro">Gemini 1.5 Pro (Legacy)</option>
+        </select>
+        <div class="note">All listed models are available on the free tier (no credit card required).</div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" id="settingsCancelBtn">Cancel</button>
+        <button class="btn btn-primary" id="settingsSaveBtn">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const LS_CARDS = 'deckflip_cards';
+    const LS_DECK_NAMES = 'deckflip_deck_names';
+    const LS_KEY = 'deckflip_gemini_key';
+    const LS_MODEL = 'deckflip_gemini_model';
+
+    function getKey() {return localStorage.getItem(LS_KEY) || '';}
+    function getModel() {return localStorage.getItem(LS_MODEL) || 'gemini-2.5-flash';}
+
+    // Navigation
+    const tabDeckBtn = document.getElementById('tabDeckBtn');
+    const tabMakerBtn = document.getElementById('tabMakerBtn');
+    const tabSocraticBtn = document.getElementById('tabSocraticBtn');
+    const deckView = document.getElementById('deckView');
+    const makerView = document.getElementById('makerView');
+    const socraticView = document.getElementById('socraticView');
+    const landingScreen = document.getElementById('landingScreen');
+
+    const NAV_MAP = [
+      {tab: tabDeckBtn, view: deckView},
+      {tab: tabMakerBtn, view: makerView},
+      {tab: tabSocraticBtn, view: socraticView}
+    ];
+
+    function switchToView(targetView) {
+      landingScreen.style.display = 'none';
+      NAV_MAP.forEach(({tab, view}) => {
+        const active = view === targetView;
+        tab.classList.toggle('active', active);
+        view.classList.toggle('active', active);
+      });
+    }
+
+    tabDeckBtn.addEventListener('click', () => switchToView(deckView));
+    tabMakerBtn.addEventListener('click', () => switchToView(makerView));
+    tabSocraticBtn.addEventListener('click', () => switchToView(socraticView));
+
+    document.getElementById('backToMenuBtn').addEventListener('click', () => {
+      landingScreen.style.display = 'flex';
+    });
+
+    document.getElementById('landingFlashcardBtn').addEventListener('click', () => switchToView(deckView));
+    document.getElementById('landingMakerBtn').addEventListener('click', () => switchToView(makerView));
+    document.getElementById('landingSocraticBtn').addEventListener('click', () => switchToView(socraticView));
+
+    // Deck Logic
+    let cards = loadCards();
+    let deckNames = loadDeckNames();
+    let activeBatch = null;
+
+    function loadCards() {try {return JSON.parse(localStorage.getItem(LS_CARDS)) || [];} catch {return [];} }
+    function saveCards() {localStorage.setItem(LS_CARDS, JSON.stringify(cards));}
+    function loadDeckNames() {try {return JSON.parse(localStorage.getItem(LS_DECK_NAMES)) || {};} catch {return {};} }
+    function saveDeckNames() {localStorage.setItem(LS_DECK_NAMES, JSON.stringify(deckNames));}
+
+    const grid = document.getElementById('grid');
+    const deckLabel = document.getElementById('deckLabel');
+
+    function renderDeck() {
+      const has = cards.length > 0;
+      document.getElementById('emptyState').style.display = has ? 'none' : 'block';
+      document.getElementById('deckWrap').style.display = has ? 'block' : 'none';
+      document.getElementById('cardCountStamp').textContent = `${cards.length} CARDS`;
+      grid.innerHTML = '';
+
+      const newDeckToggleBtn = document.getElementById('newDeckToggleBtn');
+      const newDeckPanel = document.getElementById('newDeckPanel');
+
+      if (activeBatch === null) {
+        // VIEW: FOLDERS (Master Cards)
+        newDeckToggleBtn.style.display = '';
+        deckLabel.textContent = `YOUR DECKS`;
+        const batches = {};
+        cards.forEach(c => {
+          const b = c.batchId || 'default';
+          if (!batches[b]) batches[b] = [];
+          batches[b].push(c);
+        });
+
+        for (const [batchId, batchCards] of Object.entries(batches)) {
+          const folder = document.createElement('div');
+          folder.className = 'folder-card';
+          const title = deckNames[batchId] || 'Untitled Deck';
+
+          folder.innerHTML = `
+  <h3 class="folder-title">${escapeHtml(title)}</h3>
+
+  <div class="folder-count">${batchCards.length} cards</div>
+
+  <button class="btn-study-action study-btn">
+    ▶ Study Deck
+  </button>
+
+  <div class="folder-actions">
+    <button class="folder-rename-btn" title="Rename">✏️</button>
+    <button class="folder-delete-btn" title="Delete Deck">🗑️</button>
+  </div>
+`;
+
+          folder.querySelector('.folder-delete-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+
+            const confirmed = confirm(
+              `Delete the deck "${title}"?\n\n` +
+              `This will permanently delete all ${batchCards.length} flashcards in this deck.`
+            );
+
+            if (!confirmed) return;
+
+            // Remove every card in this deck
+            cards = cards.filter(c => (c.batchId || 'default') !== batchId);
+
+            // Remove the deck name
+            delete deckNames[batchId];
+
+            saveCards();
+            saveDeckNames();
+
+            renderDeck();
+          });
+
+          // Study button handler
+          folder.querySelector('.study-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            openModeSelector(batchId);
+          });
+
+          // Rename functionality
+          folder.querySelector('.folder-rename-btn').addEventListener('click', (e) => {
+            e.stopPropagation(); // Prevent opening folder
+            const newName = prompt('Enter a new name for this deck:', title);
+            if (newName !== null && newName.trim() !== '') {
+              deckNames[batchId] = newName.trim();
+              saveDeckNames();
+              renderDeck();
+            }
+          });
+
+          // Open folder
+          folder.addEventListener('click', () => {
+            activeBatch = batchId;
+            renderDeck();
+          });
+
+          grid.appendChild(folder);
+        }
+      } else {
+        // VIEW: CARDS INSIDE A FOLDER
+        newDeckToggleBtn.style.display = 'none';
+        newDeckPanel.style.display = 'none';
+        const batchCards = cards.filter(c => (c.batchId || 'default') === activeBatch);
+        const title = deckNames[activeBatch] || 'Untitled Deck';
+
+        deckLabel.innerHTML = `
+          <button id="backFoldersBtn" class="link-danger">← Back</button>
+          <span>${escapeHtml(title)}</span>
+          <button id="studyActiveDeckBtn" class="btn-study-action" style="margin-left: 10px;">▶ Study Deck</button>
+        `;
+        document.getElementById('backFoldersBtn').addEventListener('click', () => {
+          activeBatch = null;
+          renderDeck();
+        });
+        document.getElementById('studyActiveDeckBtn').addEventListener('click', () => {
+          openModeSelector(activeBatch);
+        });
+
+        batchCards.forEach((card, i) => {
+          const el = document.createElement('div');
+          el.className = 'card-flip';
+          el.innerHTML = `
+            <button class="card-del">×</button>
+            <div class="card-inner">
+              <div class="card-face card-front"><div class="tag">CARD ${i + 1}</div><div class="body">${escapeHtml(card.q)}</div></div>
+              <div class="card-face card-back"><div class="tag">ANSWER</div><div class="body">${escapeHtml(card.a)}</div></div>
+            </div>
+          `;
+          el.querySelector('.card-inner').addEventListener('click', () => el.classList.toggle('flipped'));
+          el.querySelector('.card-del').addEventListener('click', (e) => {
+            e.stopPropagation();
+
+            const confirmed = confirm(
+              `Delete this flashcard?\n\nQuestion:\n${card.q}`
+            );
+
+            if (!confirmed) return;
+
+            cards = cards.filter(c => c.id !== card.id);
+            saveCards();
+
+            // If the deck becomes empty, remove its name and return to folders
+            const remainingCards = cards.filter(
+              c => (c.batchId || 'default') === activeBatch
+            );
+
+            if (remainingCards.length === 0) {
+              delete deckNames[activeBatch];
+              saveDeckNames();
+              activeBatch = null;
+            }
+
+            renderDeck();
+          });
+          grid.appendChild(el);
+        });
+      }
+    }
+
+    // ---------- MODE SELECTOR ----------
+    const modeSelectOverlay = document.getElementById('modeSelectOverlay');
+    const modeSelectDeckName = document.getElementById('modeSelectDeckName');
+    let pendingModeBatchId = null;
+
+    function openModeSelector(batchId) {
+      const batchCards = cards.filter(c => (c.batchId || 'default') === batchId);
+      if (batchCards.length === 0) {
+        alert("This deck has no cards to study!");
+        return;
+      }
+      pendingModeBatchId = batchId;
+      modeSelectDeckName.textContent = deckNames[batchId] || 'Untitled Deck';
+      modeSelectOverlay.classList.add('open');
+    }
+
+    document.querySelectorAll('.mode-choice-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const mode = btn.dataset.mode;
+        modeSelectOverlay.classList.remove('open');
+        if (!pendingModeBatchId) return;
+        if (mode === 'flashcards') startStudySession(pendingModeBatchId);
+        else if (mode === 'quiz') startQuizSession(pendingModeBatchId);
+        else if (mode === 'exam') startExamSession(pendingModeBatchId);
+      });
+    });
+    document.getElementById('modeSelectCancelBtn').addEventListener('click', () => {
+      modeSelectOverlay.classList.remove('open');
+    });
+
+    // ---------- STUDY MODE ENGINE ----------
+    let activeStudyCards = [];
+    let studyIndex = 0;
+    let studySession = {results: {}};
+    const studyOverlay = document.getElementById('studyOverlay');
+    const studyCardFlip = document.getElementById('studyCardFlip');
+    const studyFrontText = document.getElementById('studyFrontText');
+    const studyBackText = document.getElementById('studyBackText');
+    const studyProgress = document.getElementById('studyProgress');
+    const studyDeckTitle = document.getElementById('studyDeckTitle');
+    const studyScore = document.getElementById('studyScore');
+    const studyAnswerInput = document.getElementById('studyAnswerInput');
+    const studyCheckBtn = document.getElementById('studyCheckBtn');
+    const studyVerdict = document.getElementById('studyVerdict');
+
+    function currentStudyCard() {
+      return activeStudyCards[studyIndex];
+    }
+
+    function startStudySession(batchId) {
+      activeStudyCards = cards.filter(c => (c.batchId || 'default') === batchId);
+      if (activeStudyCards.length === 0) {
+        alert("This deck has no cards to study!");
+        return;
+      }
+      studyIndex = 0;
+      studySession = {results: {}};
+      updateStudyScore();
+      studyDeckTitle.textContent = (deckNames[batchId] || 'Untitled Deck').toUpperCase();
+      updateStudyCard();
+      studyOverlay.classList.add('open');
+    }
+
+    function updateStudyCard() {
+      const currentCard = activeStudyCards[studyIndex];
+      studyCardFlip.classList.remove('flipped');
+
+      studyFrontText.textContent = currentCard.q;
+      studyBackText.textContent = currentCard.a;
+      studyProgress.textContent = `${studyIndex + 1} / ${activeStudyCards.length}`;
+      document.getElementById('studyPrevBtn').disabled = studyIndex === 0;
+      document.getElementById('studyNextBtn').disabled = studyIndex === activeStudyCards.length - 1;
+
+      studyAnswerInput.value = '';
+      setVerdict('', null);
+    }
+
+    function updateStudyScore() {
+      const right = Object.values(studySession.results).filter(r => r === 'right').length;
+      const wrong = Object.values(studySession.results).filter(r => r === 'wrong').length;
+      studyScore.textContent = `${right} right · ${wrong} wrong`;
+    }
+
+    function setVerdict(msg, kind) {
+      studyVerdict.textContent = msg;
+      studyVerdict.className = 'study-verdict' + (kind ? ' ' + kind : '');
+    }
+
+    // Flip Card Controls
+    document.getElementById('studyFlipBtn').addEventListener('click', () => {
+      studyCardFlip.classList.toggle('flipped');
+    });
+    studyCardFlip.addEventListener('click', () => {
+      studyCardFlip.classList.toggle('flipped');
+    });
+
+    // Navigation Controls
+    document.getElementById('studyNextBtn').addEventListener('click', () => {
+      if (studyIndex < activeStudyCards.length - 1) {
+        studyIndex++;
+        updateStudyCard();
+      }
+    });
+    document.getElementById('studyPrevBtn').addEventListener('click', () => {
+      if (studyIndex > 0) {
+        studyIndex--;
+        updateStudyCard();
+      }
+    });
+    document.getElementById('closeStudyBtn').addEventListener('click', () => {
+      studyOverlay.classList.remove('open');
+    });
+
+    // Keyboard Shortcuts (Space to flip, Left/Right arrows to move)
+    window.addEventListener('keydown', (e) => {
+      if (!studyOverlay.classList.contains('open')) return;
+      // Don't hijack space/arrows while the user is typing in the answer box.
+      if (document.activeElement === studyAnswerInput) {
+        if (e.code === 'Escape') {studyOverlay.classList.remove('open');}
+        return;
+      }
+
+      if (e.code === 'Space') {
+        e.preventDefault();
+        studyCardFlip.classList.toggle('flipped');
+      } else if (e.code === 'ArrowRight' && studyIndex < activeStudyCards.length - 1) {
+        studyIndex++;
+        updateStudyCard();
+      } else if (e.code === 'ArrowLeft' && studyIndex > 0) {
+        studyIndex--;
+        updateStudyCard();
+      } else if (e.code === 'Escape') {
+        studyOverlay.classList.remove('open');
+      }
+    });
+
+    /* ---- Checking a typed answer with the AI ---- */
+    studyCheckBtn.addEventListener('click', checkStudyAnswer);
+    studyAnswerInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') checkStudyAnswer();
+    });
+
+    async function checkStudyAnswer() {
+      const card = currentStudyCard();
+      const userAnswer = studyAnswerInput.value.trim();
+      if (!userAnswer) {setVerdict('Type an answer first.', 'pending'); return;}
+      if (!getKey()) {studyOverlay.classList.remove('open'); openSettings(); return;}
+
+      studyCheckBtn.disabled = true;
+      studyCheckBtn.textContent = '…';
+      setVerdict('Checking…', 'pending');
+
+      try {
+        const grade = await gradeAnswer(card.q, card.a, userAnswer);
+
+        const isCorrect = grade.correct;
+        studySession.results[card.id] = isCorrect ? 'right' : 'wrong';
+
+        const verdictMsg = isCorrect
+          ? `✓ Correct. ${grade.feedback}`
+          : `✗ Not quite. ${grade.feedback} (Correct answer: ${card.a})`;
+
+        setVerdict(verdictMsg, isCorrect ? 'right' : 'wrong');
+
+        // Reveal the back of the card too, so they can compare.
+        studyCardFlip.classList.add('flipped');
+
+        updateStudyScore();
+      } catch (err) {
+        setVerdict(err.message || 'Could not check that answer.', 'wrong');
+      } finally {
+        studyCheckBtn.disabled = false;
+        studyCheckBtn.textContent = 'Check';
+      }
+    }
+
+    /* Calls the AI once to judge if the user's answer matches the
+       correct one closely enough — not exact-match, but not fully
+       lenient either. Returns { correct, feedback }. */
+    async function gradeAnswer(question, correctAnswer, userAnswer) {
+      const key = getKey();
+      const model = getModel();
+
+      const prompt =
+        `You are grading a flashcard answer. The CORRECT ANSWER may bundle together a
+core idea plus supporting details (examples, exact syntax, specific commands,
+extra facts). Judge the STUDENT ANSWER against the CORE IDEA only — what the
+QUESTION is actually asking for — not against every supporting detail in the
+correct answer.
+
+Mark it CORRECT if the student's answer shows they understand the main
+concept, even if they:
+- use different words or a shorter explanation
+- skip specific examples, exact syntax, or minor extra facts that weren't the
+  main point of the question
+- are a little informal or imprecise in phrasing
+
+Mark it WRONG if the student:
+- describes a different concept entirely
+- gets the core idea backwards or confused
+- gives an answer too vague to tell if they understand it (e.g. just repeats
+  the question, or says "it does the thing")
+- is missing the main point the question is actually asking about (not just
+  missing minor details)
+
+QUESTION: ${question}
+CORRECT ANSWER: ${correctAnswer}
+STUDENT ANSWER: ${userAnswer}
+
+Also write one short feedback sentence for the student, in simple everyday
+words:
+- If correct: briefly confirm what they got right. Keep it to one short
+  sentence.
+- If wrong: say what was missing or off, in plain terms — not just "wrong."
+  One or two short sentences max. No jargon, no long explanations.
+
+Respond with ONLY a JSON object like:
+{"correct": true, "feedback": "..."}`;
+
+      const body = {
+        contents: [{parts: [{text: prompt}]}],
+        generationConfig: {
+          temperature: 0,
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: 'OBJECT',
+            properties: {
+              correct: {type: 'BOOLEAN'},
+              feedback: {type: 'STRING'}
+            },
+            required: ['correct', 'feedback']
+          }
+        }
+      };
+
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-goog-api-key': key},
+        body: JSON.stringify(body)
+      });
+
+      if (!res.ok) {
+        const errBody = await res.text();
+        throw new Error(`Grading failed (${res.status}): ${errBody.slice(0, 150)}`);
+      }
+
+      const data = await res.json();
+      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!text) throw new Error('Grading returned nothing — try again.');
+
+      const parsed = JSON.parse(text);
+      return {
+        correct: parsed.correct === true,
+        feedback: parsed.feedback || ''
+      };
+    }
+
+    // ---------- QUIZ MODE ENGINE ----------
+    let quizCards = [];
+    let quizIndex = 0;
+    let quizResults = {};
+    let quizCurrentOptions = [];
+    const quizOverlay = document.getElementById('quizOverlay');
+    const quizDeckTitle = document.getElementById('quizDeckTitle');
+    const quizScore = document.getElementById('quizScore');
+    const quizProgress = document.getElementById('quizProgress');
+    const quizQuestionText = document.getElementById('quizQuestionText');
+    const quizOptionsEl = document.getElementById('quizOptions');
+    const quizVerdict = document.getElementById('quizVerdict');
+    const quizNextBtn = document.getElementById('quizNextBtn');
+
+    async function startQuizSession(batchId) {
+      quizCards = cards.filter(c => (c.batchId || 'default') === batchId);
+      if (quizCards.length === 0) {alert("This deck has no cards to study!"); return;}
+      if (!getKey()) {openSettings(); return;}
+
+      quizIndex = 0;
+      quizResults = {};
+      updateQuizScore();
+      quizDeckTitle.textContent = (deckNames[batchId] || 'Untitled Deck').toUpperCase();
+      quizOverlay.classList.add('open');
+      await loadQuizQuestion();
+    }
+
+    function updateQuizScore() {
+      const right = Object.values(quizResults).filter(r => r === 'right').length;
+      const wrong = Object.values(quizResults).filter(r => r === 'wrong').length;
+      quizScore.textContent = `${right} right · ${wrong} wrong`;
+    }
+
+    async function loadQuizQuestion() {
+      const card = quizCards[quizIndex];
+      quizProgress.textContent = `${quizIndex + 1} / ${quizCards.length}`;
+      quizQuestionText.textContent = card.q;
+      quizVerdict.textContent = '';
+      quizVerdict.className = 'study-verdict';
+      quizNextBtn.disabled = true;
+      quizOptionsEl.innerHTML = '<div style="color:var(--ink-soft); font-size:13px;">Building options…</div>';
+
+      try {
+        const distractors = await generateDistractors(card.q, card.a, quizCards);
+        quizCurrentOptions = shuffleArray([card.a, ...distractors]);
+        renderQuizOptions(card);
+      } catch (err) {
+        quizOptionsEl.innerHTML = `<div style="color:var(--danger); font-size:13px;">Couldn't build options: ${escapeHtml(err.message || 'unknown error')}</div>`;
+        quizNextBtn.disabled = false;
+      }
+    }
+
+    function renderQuizOptions(card) {
+      quizOptionsEl.innerHTML = '';
+      quizCurrentOptions.forEach(optionText => {
+        const btn = document.createElement('button');
+        btn.className = 'quiz-option-btn';
+        btn.textContent = optionText;
+        btn.addEventListener('click', () => {
+          const isCorrect = optionText === card.a;
+          quizResults[card.id] = isCorrect ? 'right' : 'wrong';
+          updateQuizScore();
+
+          document.querySelectorAll('.quiz-option-btn').forEach(b => {
+            b.disabled = true;
+            if (b.textContent === card.a) b.classList.add('correct');
+            else if (b === btn) b.classList.add('incorrect');
+          });
+
+          quizVerdict.textContent = isCorrect ? '✓ Correct!' : `✗ Not quite. Correct answer: ${card.a}`;
+          quizVerdict.className = 'study-verdict ' + (isCorrect ? 'right' : 'wrong');
+          quizNextBtn.disabled = false;
+        });
+        quizOptionsEl.appendChild(btn);
+      });
+    }
+
+    quizNextBtn.addEventListener('click', async () => {
+      if (quizIndex < quizCards.length - 1) {
+        quizIndex++;
+        await loadQuizQuestion();
+      } else {
+        quizVerdict.textContent = `Quiz complete! ${quizScore.textContent}`;
+        quizVerdict.className = 'study-verdict pending';
+        quizNextBtn.disabled = true;
+      }
+    });
+
+    document.getElementById('closeQuizBtn').addEventListener('click', () => {
+      quizOverlay.classList.remove('open');
+    });
+
+    /* Generate 3 plausible-but-wrong answers for a multiple-choice question,
+       using the other cards in the deck as topic context so distractors feel
+       relevant rather than random. */
+    async function generateDistractors(question, correctAnswer, deckCards) {
+      const otherAnswers = deckCards.map(c => c.a).filter(a => a !== correctAnswer).slice(0, 15);
+      const prompt = `You are creating a multiple-choice quiz question.
+
+QUESTION: ${question}
+CORRECT ANSWER: ${correctAnswer}
+
+Other answers from the same study deck (for topic context only — do not reuse them verbatim unless genuinely a good distractor):
+${otherAnswers.map(a => '- ' + a).join('\n')}
+
+Write exactly 3 incorrect but plausible answer options for this question. Each should:
+- Be a similar length/style to the correct answer
+- Be clearly wrong to someone who knows the material, but tempting to someone who doesn't
+- Not be a trivial rewording of the correct answer
+- Not repeat each other
+
+Respond with ONLY a JSON object like:
+{"distractors": ["...", "...", "..."]}`;
+
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(getModel())}:generateContent`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-goog-api-key': getKey()},
+        body: JSON.stringify({
+          contents: [{parts: [{text: prompt}]}],
+          generationConfig: {
+            temperature: 0.7,
+            responseMimeType: 'application/json',
+            responseSchema: {
+              type: 'OBJECT',
+              properties: {distractors: {type: 'ARRAY', items: {type: 'STRING'}}},
+              required: ['distractors']
+            }
+          }
+        })
+      });
+
+      if (!res.ok) throw new Error(`Request failed (${res.status})`);
+      const data = await res.json();
+      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!text) throw new Error('No response from model.');
+      const parsed = JSON.parse(text);
+      const distractors = Array.isArray(parsed.distractors) ? parsed.distractors.slice(0, 3) : [];
+      while (distractors.length < 3) distractors.push('None of the above');
+      return distractors;
+    }
+
+    function shuffleArray(arr) {
+      const a = [...arr];
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    // ---------- MOCK EXAM ENGINE ----------
+    let examCards = [];
+    let examTimerInterval = null;
+    let examSeconds = 0;
+    const examOverlay = document.getElementById('examOverlay');
+    const examDeckTitle = document.getElementById('examDeckTitle');
+    const examTimerEl = document.getElementById('examTimer');
+    const examIntro = document.getElementById('examIntro');
+    const examBody = document.getElementById('examBody');
+    const examResultsEl = document.getElementById('examResults');
+    const examQuestionsEl = document.getElementById('examQuestions');
+    const examAnsweredCount = document.getElementById('examAnsweredCount');
+    const examSubmitBtn = document.getElementById('examSubmitBtn');
+    const examResultsList = document.getElementById('examResultsList');
+    const examScoreBanner = document.getElementById('examScoreBanner');
+
+    function startExamSession(batchId) {
+      examCards = cards.filter(c => (c.batchId || 'default') === batchId);
+      if (examCards.length === 0) {alert("This deck has no cards to study!"); return;}
+
+      examDeckTitle.textContent = (deckNames[batchId] || 'Untitled Deck').toUpperCase();
+      examIntro.style.display = 'block';
+      examBody.style.display = 'none';
+      examResultsEl.style.display = 'none';
+      examTimerEl.textContent = '00:00';
+      examOverlay.classList.add('open');
+    }
+
+    document.getElementById('examStartBtn').addEventListener('click', () => {
+      if (!getKey()) {openSettings(); return;}
+      examIntro.style.display = 'none';
+      examBody.style.display = 'block';
+      renderExamQuestions();
+      startExamTimer();
+    });
+
+    function renderExamQuestions() {
+      examQuestionsEl.innerHTML = '';
+      examCards.forEach((card, i) => {
+        const block = document.createElement('div');
+        block.className = 'exam-q-block';
+        block.innerHTML = `
+          <div class="tag">QUESTION ${i + 1} OF ${examCards.length}</div>
+          <div class="q-text">${escapeHtml(card.q)}</div>
+          <input type="text" data-card-id="${card.id}" placeholder="Your answer…" autocomplete="off">
+        `;
+        block.querySelector('input').addEventListener('input', updateExamAnsweredCount);
+        examQuestionsEl.appendChild(block);
+      });
+      updateExamAnsweredCount();
+    }
+
+    function updateExamAnsweredCount() {
+      const inputs = examQuestionsEl.querySelectorAll('input');
+      const answered = [...inputs].filter(i => i.value.trim()).length;
+      examAnsweredCount.textContent = `${answered} / ${inputs.length} answered`;
+    }
+
+    function startExamTimer() {
+      examSeconds = 0;
+      clearInterval(examTimerInterval);
+      examTimerInterval = setInterval(() => {
+        examSeconds++;
+        const m = String(Math.floor(examSeconds / 60)).padStart(2, '0');
+        const s = String(examSeconds % 60).padStart(2, '0');
+        examTimerEl.textContent = `${m}:${s}`;
+      }, 1000);
+    }
+
+    examSubmitBtn.addEventListener('click', async () => {
+      const inputs = [...examQuestionsEl.querySelectorAll('input')];
+      const unanswered = inputs.filter(i => !i.value.trim()).length;
+      if (unanswered > 0 && !confirm(`${unanswered} question(s) are still blank. Submit anyway?`)) return;
+
+      clearInterval(examTimerInterval);
+      examSubmitBtn.disabled = true;
+      examSubmitBtn.textContent = 'Grading…';
+
+      const answerMap = {};
+      inputs.forEach(i => {answerMap[i.dataset.cardId] = i.value.trim();});
+
+      const results = [];
+      for (const card of examCards) {
+        const userAnswer = answerMap[card.id] || '';
+        if (!userAnswer) {
+          results.push({card, correct: false, feedback: 'No answer given.'});
+          continue;
+        }
+        try {
+          const grade = await gradeAnswer(card.q, card.a, userAnswer);
+          results.push({card, correct: grade.correct, feedback: grade.feedback, userAnswer});
+        } catch (err) {
+          results.push({card, correct: false, feedback: 'Could not grade this one — try reviewing it manually.', userAnswer});
+        }
+      }
+
+      showExamResults(results);
+      examSubmitBtn.disabled = false;
+      examSubmitBtn.textContent = 'Submit Exam';
+    });
+
+    function showExamResults(results) {
+      examBody.style.display = 'none';
+      examResultsEl.style.display = 'block';
+
+      const right = results.filter(r => r.correct).length;
+      const pct = Math.round((right / results.length) * 100);
+      examScoreBanner.textContent = `${right} / ${results.length} correct (${pct}%)`;
+
+      examResultsList.innerHTML = '';
+      results.forEach((r, i) => {
+        const block = document.createElement('div');
+        block.className = 'exam-result-block ' + (r.correct ? 'right' : 'wrong');
+        block.innerHTML = `
+          <div class="tag" style="font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:0.08em; color:var(--ink-soft);">QUESTION ${i + 1} — ${r.correct ? 'CORRECT' : 'INCORRECT'}</div>
+          <div class="q-text" style="font-size:14px; margin:6px 0;">${escapeHtml(r.card.q)}</div>
+          <div class="verdict-line">Your answer: ${escapeHtml(r.userAnswer || '(blank)')}</div>
+          <div class="verdict-line">Correct answer: ${escapeHtml(r.card.a)}</div>
+          <div class="verdict-line">${escapeHtml(r.feedback || '')}</div>
+        `;
+        examResultsList.appendChild(block);
+      });
+    }
+
+    document.getElementById('examCloseResultsBtn').addEventListener('click', () => {
+      examOverlay.classList.remove('open');
+    });
+    document.getElementById('closeExamBtn').addEventListener('click', () => {
+      clearInterval(examTimerInterval);
+      examOverlay.classList.remove('open');
+    });
+
+    // Clear Deck Button
+    document.getElementById('clearDeckBtn').addEventListener('click', () => {
+      if (activeBatch) {
+        if (confirm("Are you sure you want to delete this specific deck and all its cards?")) {
+          cards = cards.filter(c => (c.batchId || 'default') !== activeBatch);
+          delete deckNames[activeBatch];
+          activeBatch = null;
+          saveCards();
+          saveDeckNames();
+          renderDeck();
+        }
+      } else {
+        if (confirm("Warning: Are you sure you want to clear ALL decks and cards?")) {
+          cards = [];
+          deckNames = {};
+          saveCards();
+          saveDeckNames();
+          renderDeck();
+        }
+      }
+    });
+
+    // Flashcard Generator
+    async function generateFlashcards(textareaEl, btnEl) {
+      const text = textareaEl.value.trim();
+      if (!text || !getKey()) {openSettings(); return;}
+
+      const originalLabel = btnEl.textContent;
+      btnEl.textContent = "Generating...";
+      btnEl.disabled = true;
+
+      try {
+        const flashcardPrompt = `You are creating a COMPLETE flashcard set from the notes below. Your goal is full coverage — nothing important or "good to know" should be left out.
+
+Instructions:
+1. Read through the entire notes text carefully, section by section.
+2. Extract EVERY distinct fact worth remembering, including:
+   - Core definitions and key terms
+   - Formulas, equations, and how/when to use them
+   - Processes, steps, or sequences (break multi-step processes into one card per step if that aids recall)
+   - Important dates, names, numbers, and classifications
+   - Cause-and-effect relationships and comparisons
+   - Examples that illustrate a concept (if the example itself is worth remembering)
+   - Secondary details, exceptions, caveats, or "good to know" asides — do not skip these just because they seem minor. Give them their own cards rather than folding them into a bigger card.
+3. Do not summarize multiple distinct facts into a single vague card. Prefer more atomic cards over fewer broad ones — if in doubt, split into two cards rather than merge.
+4. Do not invent, assume, or add information that is not present in or directly implied by the notes.
+5. Word each question so it can stand alone without needing to see the notes.
+6. Cover the notes completely from start to finish — do not stop early or trail off partway through if the notes are long.
+
+Return ONLY a JSON array, no other text, with exactly two properties per object: "q" (question) and "a" (answer).
+
+Notes:
+${text}`;
+
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(getModel())}:generateContent`, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json', 'X-goog-api-key': getKey()},
+          body: JSON.stringify({
+            contents: [{parts: [{text: flashcardPrompt}]}],
+            generationConfig: {temperature: 0.4, maxOutputTokens: 65536}
+          })
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data?.error?.message || `Request failed with status ${res.status}`);
+        }
+
+        const finishReason = data?.candidates?.[0]?.finishReason;
+        const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+        if (!rawText) {
+          throw new Error(
+            finishReason
+              ? `No text returned (finishReason: ${finishReason})`
+              : 'No text returned by the model.'
+          );
+        }
+
+        const jsonText = rawText.replace(/```json|```/g, '').trim();
+
+        let parsedCards;
+        let wasTruncated = false;
+        try {
+          parsedCards = JSON.parse(jsonText);
+        } catch (parseErr) {
+          // Response likely got cut off mid-object. Try to salvage every
+          // complete {"q":...,"a":...} object that appears before the break.
+          const recovered = [];
+          const objRegex = /\{\s*"q"\s*:\s*"(?:[^"\\]|\\.)*"\s*,\s*"a"\s*:\s*"(?:[^"\\]|\\.)*"\s*\}/g;
+          let match;
+          while ((match = objRegex.exec(jsonText)) !== null) {
+            try {recovered.push(JSON.parse(match[0]));} catch (_) { /* skip malformed */}
+          }
+
+          if (recovered.length > 0) {
+            parsedCards = recovered;
+            wasTruncated = true;
+          } else {
+            throw new Error('Model did not return valid JSON: ' + parseErr.message);
+          }
+        }
+
+        // Setup new batch ID
+        const batchId = 'deck_' + Date.now();
+        deckNames[batchId] = 'New Deck';
+        saveDeckNames();
+
+        const newCards = parsedCards.map(c => ({
+          id: crypto.randomUUID(),
+          batchId: batchId,
+          q: c.q,
+          a: c.a
+        }));
+
+        cards = [...cards, ...newCards];
+        saveCards();
+        textareaEl.value = '';
+        document.getElementById('newDeckPanel').style.display = 'none';
+        renderDeck();
+
+        if (wasTruncated) {
+          alert(`Heads up: the response was cut off before finishing. Recovered ${newCards.length} complete card(s), but some cards near the end of your notes may be missing. Try again, or split your notes into smaller chunks for full coverage.`);
+        }
+      } catch (e) {
+        console.error('Flashcard generation error:', e);
+        alert('Failed to generate cards: ' + e.message);
+      } finally {
+        btnEl.textContent = originalLabel;
+        btnEl.disabled = false;
+      }
+    }
+
+    document.getElementById('firstGenBtn').addEventListener('click', () => {
+      generateFlashcards(document.getElementById('firstText'), document.getElementById('firstGenBtn'));
+    });
+
+    document.getElementById('firstGenBtnInline').addEventListener('click', () => {
+      generateFlashcards(document.getElementById('firstTextInline'), document.getElementById('firstGenBtnInline'));
+    });
+
+    document.getElementById('newDeckToggleBtn').addEventListener('click', () => {
+      const panel = document.getElementById('newDeckPanel');
+      const isOpen = panel.style.display === 'block';
+      panel.style.display = isOpen ? 'none' : 'block';
+    });
+
+    // Socratic Tutor Engine
+    const socraticChat = document.getElementById('socraticChat');
+    const socraticInput = document.getElementById('socraticInput');
+    const socraticSendBtn = document.getElementById('socraticSendBtn');
+    const socraticImageInput = document.getElementById('socraticImageInput');
+    const socraticImageName = document.getElementById('socraticImageName');
+    let socraticImageBase64 = null;
+    let tutorChats = JSON.parse(localStorage.getItem("tutorChats") || "[]");
+    let currentChatId = null;
+
+    document.getElementById("newTutorChatBtn").onclick = () => {
+      const chat = createTutorChat();
+      socraticChat.innerHTML = "";
+      loadTutorChat(chat.id);
+      closeSocraticSidebar();
+    };
+
+    // Mobile: conversations become a slide-out drawer instead of a
+    // permanently hidden panel, so they stay reachable on phones.
+    const socraticSidebarEl = document.getElementById('socraticSidebar');
+    const sidebarScrimEl = document.getElementById('sidebarScrim');
+
+    function openSocraticSidebar() {
+      socraticSidebarEl.classList.add('open');
+      sidebarScrimEl.classList.add('open');
+    }
+    function closeSocraticSidebar() {
+      socraticSidebarEl.classList.remove('open');
+      sidebarScrimEl.classList.remove('open');
+    }
+
+    document.getElementById('sidebarDrawerToggleBtn').addEventListener('click', openSocraticSidebar);
+    sidebarScrimEl.addEventListener('click', closeSocraticSidebar);
+
+    function saveTutorChats() {
+      localStorage.setItem("tutorChats", JSON.stringify(tutorChats));
+    }
+
+    function renderTutorChats() {
+      const list = document.getElementById("tutorChatList");
+      list.innerHTML = "";
+
+      tutorChats.forEach(chat => {
+        const item = document.createElement("div");
+        item.className = "tutor-chat-item";
+        item.innerHTML = `
+            <span>${escapeHtml(chat.title)}</span>
+            <button class="deleteTutorChat" title="Delete Conversation">🗑️</button>
+        `;
+
+        item.querySelector("span").onclick = () => {
+          loadTutorChat(chat.id);
+          closeSocraticSidebar();
+        };
+
+        item.querySelector(".deleteTutorChat").onclick = (e) => {
+          e.stopPropagation();
+          if (!confirm(`Delete "${chat.title}"?`)) return;
+
+          tutorChats = tutorChats.filter(c => c.id !== chat.id);
+          saveTutorChats();
+          currentChatId = tutorChats.length ? tutorChats[0].id : null;
+
+          if (tutorChats.length === 0) {
+            createTutorChat();
+          } else {
+            loadTutorChat(tutorChats[0].id);
+          }
+          renderTutorChats();
+        };
+        list.appendChild(item);
+      });
+    }
+
+    function createTutorChat(title = "New Conversation") {
+      const chat = {
+        id: Date.now().toString(),
+        title,
+        history: []
+      };
+
+      tutorChats.unshift(chat);
+      currentChatId = chat.id;
+      saveTutorChats();
+      renderTutorChats();
+      return chat;
+    }
+
+    function getCurrentChat() {
+      let chat = tutorChats.find(c => c.id === currentChatId);
+      if (!chat) {
+        chat = createTutorChat();
+      }
+      return chat;
+    }
+
+    let seconds = 0;
+    setInterval(() => {
+      seconds++;
+      const m = String(Math.floor(seconds / 60)).padStart(2, '0');
+      const s = String(seconds % 60).padStart(2, '0');
+      document.getElementById('socraticTimer').textContent = `${m}:${s}`;
+    }, 1000);
+
+    socraticImageInput.addEventListener('change', () => {
+      const file = socraticImageInput.files[0];
+      if (file) {
+        socraticImageName.textContent = `Attached: ${file.name}`;
+        const reader = new FileReader();
+        reader.onload = () => {socraticImageBase64 = reader.result.split(',')[1];};
+        reader.readAsDataURL(file);
+      }
+    });
+
+    async function sendSocraticMessage(userText) {
+      if (!userText.trim() && !socraticImageBase64) return;
+      if (!getKey()) {openSettings(); return;}
+
+      appendChatBubble('user', userText);
+      socraticInput.value = '';
+
+      const userParts = [{text: userText}];
+      if (socraticImageBase64) {
+        userParts.push({inlineData: {mimeType: 'image/jpeg', data: socraticImageBase64}});
+        socraticImageBase64 = null;
+        socraticImageName.textContent = '';
+      }
+
+      const currentChat = getCurrentChat();
+
+      // Bug Fix: Assign title to new chats using the first message sent
+      if (currentChat.title === "New Conversation") {
+        currentChat.title = userText.substring(0, 35) + (userText.length > 35 ? '...' : '');
+        saveTutorChats();
+        renderTutorChats();
+      }
+
+      currentChat.history.push({
+        role: 'user',
+        parts: userParts
+      });
+
+      saveTutorChats();
+
+      const systemInstruction = "You are a patient Socratic Math & Science tutor. Guide the student step-by-step using targeted questions. Do NOT reveal complete solutions immediately unless asked to verify final answers. Use standard LaTeX formatting for all mathematical expressions. Wrap inline math in single dollar signs, for example: $\frac{1}{2}$ Wrap larger equations in double dollar signs: $$x^2+5x+6=0$$Do not wrap normal English text in LaTeX.";
+
+      try {
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(getModel())}:generateContent`, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json', 'X-goog-api-key': getKey()},
+          body: JSON.stringify({
+            systemInstruction: {parts: [{text: systemInstruction}]},
+            contents: currentChat.history
+          })
+        });
+
+        const data = await res.json();
+        const aiReply = data?.candidates?.[0]?.content?.parts?.[0]?.text || "I couldn't process that step. Could you rephrase?";
+
+        currentChat.history.push({
+          role: 'model',
+          parts: [{text: aiReply}]
+        });
+
+        saveTutorChats();
+
+        appendChatBubble('tutor', aiReply);
+      } catch (e) {
+        appendChatBubble('tutor', 'An error occurred while connecting to the AI tutor.');
+      }
+    }
+
+    function loadTutorChat(chatId) {
+      currentChatId = chatId;
+      socraticChat.innerHTML = "";
+
+      const chat = getCurrentChat();
+
+      // Show welcome message if chat is entirely blank
+      if (chat.history.length === 0) {
+        socraticChat.innerHTML = `
+          <div class="msg-row tutor">
+            <div class="bubble">
+              <span class="tutor-label">SOCRATIC TUTOR</span>
+              <p>Welcome! What math or science problem are we working on today? Type it out or attach an image!</p>
+            </div>
+          </div>
+        `;
+      }
+
+      chat.history.forEach(msg => {
+        appendChatBubble(
+          msg.role === "user" ? "user" : "tutor",
+          msg.parts[0].text
+        );
+      });
+    }
+
+    function appendChatBubble(role, text) {
+      const row = document.createElement('div');
+      row.className = `msg-row ${role}`;
+
+      let formattedText = role === 'user' ? escapeHtml(text) : text;
+      
+      if (role === 'tutor') {
+        // 1. Horizontal Rules (*** or ---)
+        formattedText = formattedText.replace(/^\s*(\*\*\*|---)\s*$/gm, '<hr style="border: 0; border-top: 1px solid var(--border); margin: 12px 0;">');
+
+        // 2. Headings (### Text, ## Text, # Text)
+        formattedText = formattedText.replace(/^###\s+(.*)$/gm, '<strong style="font-size: 1.1em; display: block; margin-top: 8px;">$1</strong>');
+        formattedText = formattedText.replace(/^##\s+(.*)$/gm, '<strong style="font-size: 1.2em; display: block; margin-top: 10px;">$1</strong>');
+        formattedText = formattedText.replace(/^#\s+(.*)$/gm, '<strong style="font-size: 1.3em; display: block; margin-top: 12px;">$1</strong>');
+
+        // 3. Bullet points (* item or - item)
+        formattedText = formattedText.replace(/^\s*[\*\-]\s+(.*)$/gm, '&bull; $1');
+
+        // 4. Bold (**text**)
+        formattedText = formattedText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+        // 5. Italics (*text* or _text_)
+        formattedText = formattedText.replace(/\*(?!\*)(.*?)\*(?!\*)/g, '<em>$1</em>');
+        formattedText = formattedText.replace(/_(?!_)(.*?)_(?!_)/g, '<em>$1</em>');
+        
+        // 6. Blockquotes (> text) - just in case the AI uses them!
+        formattedText = formattedText.replace(/^\s*>\s+(.*)$/gm, '<span style="display: block; border-left: 3px solid var(--accent); padding-left: 10px; margin: 8px 0; color: var(--ink-soft);">$1</span>');
+
+        // 7. Convert newlines to HTML line breaks
+        formattedText = formattedText.replace(/\n/g, '<br>');
+      }
+
+      row.innerHTML = `
+    <div class="bubble">
+      ${role === 'tutor' ? '<span class="tutor-label">SOCRATIC TUTOR</span>' : ''}
+      <p>${formattedText}</p>
+    </div>
+  `;
+
+      socraticChat.appendChild(row);
+      socraticChat.scrollTop = socraticChat.scrollHeight;
+
+      if (role === 'tutor' && window.renderMathInElement) {
+        renderMathInElement(row, {
+          delimiters: [
+            {left: "$$", right: "$$", display: true},
+            {left: "$", right: "$", display: false},
+            {left: "\\(", right: "\\)", display: false},
+            {left: "\\[", right: "\\]", display: true}
+          ]
+        });
+      }
+    }
+
+    function escapeHtml(str) {
+      const d = document.createElement('div');
+      d.textContent = str;
+      return d.innerHTML;
+    }
+
+    socraticSendBtn.addEventListener('click', () => sendSocraticMessage(socraticInput.value));
+    socraticInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {e.preventDefault(); socraticSendBtn.click();}
+    });
+
+    document.querySelectorAll('.quick-btn').forEach(btn => {
+      btn.addEventListener('click', () => sendSocraticMessage(btn.dataset.prompt));
+    });
+
+    // =========================================================
+    //  MOCK QUIZ & EXAM MAKER
+    // =========================================================
+    let makerFiles = []; // { name, mimeType, base64 }
+    let makerQType = 'mixed';
+    let makerFormat = 'quiz';
+
+    document.querySelectorAll('#makerQTypeGroup .pill-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#makerQTypeGroup .pill-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        makerQType = btn.dataset.qtype;
+      });
+    });
+
+    document.querySelectorAll('#makerFormatGroup .pill-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#makerFormatGroup .pill-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        makerFormat = btn.dataset.format;
+      });
+    });
+
+    const makerDropZone = document.getElementById('makerDropZone');
+    const makerFileInput = document.getElementById('makerFileInput');
+    const makerFileList = document.getElementById('makerFileList');
+
+    makerDropZone.addEventListener('click', () => makerFileInput.click());
+    makerDropZone.addEventListener('dragover', (e) => {e.preventDefault(); makerDropZone.classList.add('drag-over');});
+    makerDropZone.addEventListener('dragleave', () => makerDropZone.classList.remove('drag-over'));
+    makerDropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      makerDropZone.classList.remove('drag-over');
+      handleMakerFiles(e.dataTransfer.files);
+    });
+    makerFileInput.addEventListener('change', () => handleMakerFiles(makerFileInput.files));
+
+    function handleMakerFiles(fileListObj) {
+      [...fileListObj].forEach(file => {
+        const isImage = file.type.startsWith('image/');
+        const isPdf = file.type === 'application/pdf';
+        if (!isImage && !isPdf) return;
+
+        const reader = new FileReader();
+        reader.onload = () => {
+          makerFiles.push({
+            name: file.name,
+            mimeType: file.type,
+            base64: reader.result.split(',')[1]
+          });
+          renderMakerFileList();
+        };
+        reader.readAsDataURL(file);
+      });
+      makerFileInput.value = '';
+    }
+
+    function renderMakerFileList() {
+      makerFileList.innerHTML = '';
+      makerFiles.forEach((f, idx) => {
+        const chip = document.createElement('div');
+        chip.className = 'attached-file-chip';
+        chip.innerHTML = `<span>📄 ${escapeHtml(f.name)}</span><button class="remove-file-btn" data-idx="${idx}">✕</button>`;
+        chip.querySelector('.remove-file-btn').addEventListener('click', () => {
+          makerFiles.splice(idx, 1);
+          renderMakerFileList();
+        });
+        makerFileList.appendChild(chip);
+      });
+    }
+
+    const makerGenerateBtn = document.getElementById('makerGenerateBtn');
+    const makerLoading = document.getElementById('makerLoading');
+    const makerLoadingText = document.getElementById('makerLoadingText');
+
+    let makerSet = null; // { title, format, questions: [...] }
+
+    document.getElementById('makerGenerateBtn').addEventListener('click', buildMockSet);
+
+    async function buildMockSet() {
+      const topic = document.getElementById('makerTopic').value.trim();
+      if (!topic && makerFiles.length === 0) {
+        alert('Give a topic or attach at least one file so it knows what to test you on.');
+        return;
+      }
+      if (!getKey()) {openSettings(); return;}
+
+      const count = Math.max(3, Math.min(50, parseInt(document.getElementById('makerCount').value, 10) || 10));
+      const difficulty = document.getElementById('makerDifficulty').value;
+
+      makerGenerateBtn.disabled = true;
+      makerLoading.classList.add('active');
+      makerLoadingText.textContent = makerFiles.length
+        ? 'Reading your material and writing questions…'
+        : 'Writing questions…';
+
+      try {
+        const qTypeInstruction = {
+          mixed: `Use a mix of "mc" (multiple choice) and "identification" (short-answer/recall) questions — whichever type best fits each specific fact or concept. Favor identification for definitions/terms/formulas that are better tested by recall, and mc for things better tested by distinguishing between close options.`,
+          mc: `Every question must be type "mc" (multiple choice), with exactly 4 options each.`,
+          identification: `Every question must be type "identification" (short-answer/recall) — no options.`
+        }[makerQType];
+
+        const difficultyInstruction = {
+          easy: 'Keep questions straightforward, testing basic recall and recognition — good for a first pass.',
+          medium: 'Aim for a typical in-class test level — some application, not just pure recall.',
+          hard: 'Push harder: require applying concepts, spotting nuance, or combining more than one idea per question.'
+        }[difficulty];
+
+        const prompt = `You are building a ${count}-question mock ${makerFormat === 'exam' ? 'exam' : 'quiz'} for a student.
+
+TOPIC / INSTRUCTIONS FROM STUDENT:
+${topic || '(see attached files for the material to cover)'}
+
+${makerFiles.length ? 'The student has also attached reference material (images and/or PDFs) — base the questions on that content combined with the topic above.' : ''}
+
+QUESTION TYPES: ${qTypeInstruction}
+
+DIFFICULTY: ${difficultyInstruction}
+
+For EVERY question, also write:
+- "hint": one short, gentle nudge that points toward the answer WITHOUT giving it away directly — something a tutor would say if the student asked for a hint.
+- For "mc" questions: "options" (exactly 4 strings, one correct + 3 plausible distractors, shuffled in a random order) and "answer" (the exact text of the correct option, must match one of the options exactly).
+- For "identification" questions: "answer" (the correct answer, as a clear standalone string — no options field).
+
+Make sure every question is directly answerable from the topic/material given — never invent facts not implied by it.
+
+Return ONLY a JSON array of objects, no other text, in this exact shape:
+[{"type":"mc","q":"...","options":["...","...","...","..."],"answer":"...","hint":"..."}, {"type":"identification","q":"...","answer":"...","hint":"..."}]`;
+
+        const parts = [{text: prompt}];
+        makerFiles.forEach(f => {
+          parts.push({inlineData: {mimeType: f.mimeType, data: f.base64}});
+        });
+
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(getModel())}:generateContent`, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json', 'X-goog-api-key': getKey()},
+          body: JSON.stringify({
+            contents: [{parts}],
+            generationConfig: {temperature: 0.5, maxOutputTokens: 65536}
+          })
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.error?.message || `Request failed with status ${res.status}`);
+
+        const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!rawText) {
+          const finishReason = data?.candidates?.[0]?.finishReason;
+          throw new Error(finishReason ? `No text returned (finishReason: ${finishReason})` : 'No text returned by the model.');
+        }
+
+        const jsonText = rawText.replace(/```json|```/g, '').trim();
+        let questions;
+        try {
+          questions = JSON.parse(jsonText);
+        } catch (parseErr) {
+          throw new Error('Model did not return valid JSON: ' + parseErr.message);
+        }
+
+        questions = questions.map(q => ({
+          id: crypto.randomUUID(),
+          type: q.type === 'mc' ? 'mc' : 'identification',
+          q: q.q,
+          options: Array.isArray(q.options) ? q.options : null,
+          answer: q.answer,
+          hint: q.hint || 'Think about the core idea the question is testing.'
+        }));
+
+        makerSet = {
+          title: (topic || 'Custom Mock Set').slice(0, 60),
+          format: makerFormat,
+          questions
+        };
+
+        if (makerFormat === 'quiz') {
+          startMakerQuiz(makerSet);
+        } else {
+          startMakerExam(makerSet);
+        }
+      } catch (e) {
+        console.error('Mock maker generation error:', e);
+        alert('Failed to build the quiz/exam: ' + e.message);
+      } finally {
+        makerGenerateBtn.disabled = false;
+        makerLoading.classList.remove('active');
+      }
+    }
+
+    // ---------- MAKER QUIZ ENGINE (one question at a time) ----------
+    const makerQuizOverlay = document.getElementById('makerQuizOverlay');
+    const makerQuizTitle = document.getElementById('makerQuizTitle');
+    const makerQuizScore = document.getElementById('makerQuizScore');
+    const makerQuizProgress = document.getElementById('makerQuizProgress');
+    const makerQuizQTypeTag = document.getElementById('makerQuizQTypeTag');
+    const makerQuizQuestionText = document.getElementById('makerQuizQuestionText');
+    const makerQuizOptions = document.getElementById('makerQuizOptions');
+    const makerQuizIdWrap = document.getElementById('makerQuizIdWrap');
+    const makerQuizIdInput = document.getElementById('makerQuizIdInput');
+    const makerQuizIdCheckBtn = document.getElementById('makerQuizIdCheckBtn');
+    const makerQuizVerdict = document.getElementById('makerQuizVerdict');
+    const makerQuizNextBtn = document.getElementById('makerQuizNextBtn');
+    const makerQuizHintBtn = document.getElementById('makerQuizHintBtn');
+    const makerQuizHintBox = document.getElementById('makerQuizHintBox');
+    const makerQuizAskTutorBtn = document.getElementById('makerQuizAskTutorBtn');
+
+    let makerQuizQuestions = [];
+    let makerQuizIndex = 0;
+    let makerQuizResults = {};
+    let makerQuizAnswered = false;
+
+    function startMakerQuiz(set) {
+      makerQuizQuestions = set.questions;
+      makerQuizIndex = 0;
+      makerQuizResults = {};
+      makerQuizTitle.textContent = set.title.toUpperCase();
+      makerQuizOverlay.classList.add('open');
+      showFloatTutorFab(true);
+      renderMakerQuizQuestion();
+    }
+
+    function renderMakerQuizQuestion() {
+      const q = makerQuizQuestions[makerQuizIndex];
+      makerQuizAnswered = false;
+      makerQuizHintBox.classList.remove('shown');
+      makerQuizHintBox.textContent = '';
+      makerQuizHintBtn.disabled = false;
+      makerQuizVerdict.textContent = '';
+      makerQuizVerdict.className = 'study-verdict';
+      makerQuizNextBtn.disabled = true;
+      makerQuizProgress.textContent = `${makerQuizIndex + 1} / ${makerQuizQuestions.length}`;
+
+      const right = Object.values(makerQuizResults).filter(r => r === 'right').length;
+      const wrong = Object.values(makerQuizResults).filter(r => r === 'wrong').length;
+      makerQuizScore.textContent = `${right} right · ${wrong} wrong`;
+
+      makerQuizQuestionText.textContent = q.q;
+
+      if (q.type === 'mc') {
+        makerQuizQTypeTag.textContent = 'MULTIPLE CHOICE';
+        makerQuizOptions.style.display = 'grid';
+        makerQuizIdWrap.style.display = 'none';
+        makerQuizOptions.innerHTML = '';
+        q.options.forEach(optionText => {
+          const btn = document.createElement('button');
+          btn.className = 'quiz-option-btn';
+          btn.textContent = optionText;
+          btn.addEventListener('click', () => handleMakerQuizMcAnswer(btn, optionText, q));
+          makerQuizOptions.appendChild(btn);
+        });
+      } else {
+        makerQuizQTypeTag.textContent = 'IDENTIFICATION';
+        makerQuizOptions.style.display = 'none';
+        makerQuizIdWrap.style.display = 'block';
+        makerQuizIdInput.value = '';
+        makerQuizIdInput.disabled = false;
+      }
+    }
+
+    function handleMakerQuizMcAnswer(btn, optionText, q) {
+      if (makerQuizAnswered) return;
+      makerQuizAnswered = true;
+
+      const isCorrect = optionText === q.answer;
+      makerQuizResults[q.id] = isCorrect ? 'right' : 'wrong';
+
+      [...makerQuizOptions.children].forEach(b => {
+        b.disabled = true;
+        if (b.textContent === q.answer) b.classList.add('correct');
+        else if (b === btn) b.classList.add('incorrect');
+      });
+
+      makerQuizVerdict.textContent = isCorrect ? '✓ Correct!' : `✗ Not quite. Correct answer: ${q.answer}`;
+      makerQuizVerdict.className = 'study-verdict ' + (isCorrect ? 'right' : 'wrong');
+      makerQuizNextBtn.disabled = false;
+
+      const right = Object.values(makerQuizResults).filter(r => r === 'right').length;
+      const wrong = Object.values(makerQuizResults).filter(r => r === 'wrong').length;
+      makerQuizScore.textContent = `${right} right · ${wrong} wrong`;
+    }
+
+    makerQuizIdCheckBtn.addEventListener('click', async () => {
+      if (makerQuizAnswered) return;
+      const q = makerQuizQuestions[makerQuizIndex];
+      const userAnswer = makerQuizIdInput.value.trim();
+      if (!userAnswer) return;
+
+      makerQuizIdCheckBtn.disabled = true;
+      makerQuizIdCheckBtn.textContent = '…';
+      makerQuizVerdict.textContent = 'Checking…';
+      makerQuizVerdict.className = 'study-verdict pending';
+
+      try {
+        const grade = await gradeAnswer(q.q, q.answer, userAnswer);
+        makerQuizAnswered = true;
+        makerQuizIdInput.disabled = true;
+        makerQuizResults[q.id] = grade.correct ? 'right' : 'wrong';
+
+        makerQuizVerdict.textContent = grade.correct
+          ? `✓ Correct! ${grade.feedback}`
+          : `✗ ${grade.feedback} Correct answer: ${q.answer}`;
+        makerQuizVerdict.className = 'study-verdict ' + (grade.correct ? 'right' : 'wrong');
+        makerQuizNextBtn.disabled = false;
+
+        const right = Object.values(makerQuizResults).filter(r => r === 'right').length;
+        const wrong = Object.values(makerQuizResults).filter(r => r === 'wrong').length;
+        makerQuizScore.textContent = `${right} right · ${wrong} wrong`;
+      } catch (e) {
+        makerQuizVerdict.textContent = 'Could not grade that — try again.';
+        makerQuizVerdict.className = 'study-verdict wrong';
+      } finally {
+        makerQuizIdCheckBtn.disabled = false;
+        makerQuizIdCheckBtn.textContent = 'Check';
+      }
+    });
+
+    makerQuizHintBtn.addEventListener('click', () => {
+      const q = makerQuizQuestions[makerQuizIndex];
+      makerQuizHintBox.textContent = `💡 ${q.hint}`;
+      makerQuizHintBox.classList.add('shown');
+      makerQuizHintBtn.disabled = true;
+    });
+
+    makerQuizAskTutorBtn.addEventListener('click', () => {
+      const q = makerQuizQuestions[makerQuizIndex];
+      openSideTutorForQuestion(q.q);
+    });
+
+    makerQuizNextBtn.addEventListener('click', () => {
+      if (makerQuizIndex < makerQuizQuestions.length - 1) {
+        makerQuizIndex++;
+        renderMakerQuizQuestion();
+      } else {
+        makerQuizOverlay.classList.remove('open');
+        showFloatTutorFab(false);
+        const right = Object.values(makerQuizResults).filter(r => r === 'right').length;
+        alert(`Quiz complete! You got ${right} / ${makerQuizQuestions.length} correct.`);
+      }
+    });
+
+    document.getElementById('closeMakerQuizBtn').addEventListener('click', () => {
+      makerQuizOverlay.classList.remove('open');
+      showFloatTutorFab(false);
+    });
+
+    // ---------- MAKER EXAM ENGINE (all at once, timed) ----------
+    const makerExamOverlay = document.getElementById('makerExamOverlay');
+    const makerExamTitle = document.getElementById('makerExamTitle');
+    const makerExamTimerEl = document.getElementById('makerExamTimer');
+    const makerExamIntro = document.getElementById('makerExamIntro');
+    const makerExamBody = document.getElementById('makerExamBody');
+    const makerExamResultsEl = document.getElementById('makerExamResults');
+    const makerExamQuestionsEl = document.getElementById('makerExamQuestions');
+    const makerExamAnsweredCount = document.getElementById('makerExamAnsweredCount');
+    const makerExamSubmitBtn = document.getElementById('makerExamSubmitBtn');
+    const makerExamResultsList = document.getElementById('makerExamResultsList');
+    const makerExamScoreBanner = document.getElementById('makerExamScoreBanner');
+
+    let makerExamQuestions = [];
+    let makerExamSeconds = 0;
+    let makerExamTimerInterval = null;
+
+    function startMakerExam(set) {
+      makerExamQuestions = set.questions;
+      makerExamTitle.textContent = set.title.toUpperCase();
+      document.getElementById('makerExamIntroText').textContent =
+        `This exam has ${set.questions.length} question(s) built from your topic and materials. Answer each one, then submit at the end to see your full results with feedback. A hint button and the Socratic tutor are available on every question if you get stuck.`;
+      makerExamIntro.style.display = 'block';
+      makerExamBody.style.display = 'none';
+      makerExamResultsEl.style.display = 'none';
+      makerExamTimerEl.textContent = '00:00';
+      makerExamOverlay.classList.add('open');
+      showFloatTutorFab(true);
+    }
+
+    document.getElementById('makerExamStartBtn').addEventListener('click', () => {
+      makerExamIntro.style.display = 'none';
+      makerExamBody.style.display = 'block';
+      renderMakerExamQuestions();
+      startMakerExamTimer();
+    });
+
+    function renderMakerExamQuestions() {
+      makerExamQuestionsEl.innerHTML = '';
+      makerExamQuestions.forEach((q, i) => {
+        const block = document.createElement('div');
+        block.className = 'exam-q-block';
+
+        const qtypeLabel = q.type === 'mc' ? 'MULTIPLE CHOICE' : 'IDENTIFICATION';
+        let answerFieldHtml = '';
+        if (q.type === 'mc') {
+          answerFieldHtml = `<div class="quiz-options" style="margin-top:10px;">` +
+            q.options.map(opt => `<button type="button" class="quiz-option-btn exam-mc-option" data-value="${escapeHtml(opt)}">${escapeHtml(opt)}</button>`).join('') +
+            `</div><input type="hidden" data-card-id="${q.id}" class="exam-mc-hidden-input">`;
+        } else {
+          answerFieldHtml = `<input type="text" data-card-id="${q.id}" placeholder="Your answer…" autocomplete="off">`;
+        }
+
+        block.innerHTML = `
+          <div class="tag">QUESTION ${i + 1} OF ${makerExamQuestions.length} · ${qtypeLabel}</div>
+          <div class="q-text">${escapeHtml(q.q)}</div>
+          ${answerFieldHtml}
+          <div class="hint-row">
+            <button type="button" class="ask-tutor-btn exam-ask-tutor-btn">🏛️ Ask the tutor</button>
+            <button type="button" class="hint-btn exam-hint-btn">💡 Get a hint</button>
+          </div>
+          <div class="hint-box exam-hint-box"></div>
+        `;
+
+        if (q.type === 'mc') {
+          const hiddenInput = block.querySelector('.exam-mc-hidden-input');
+          block.querySelectorAll('.exam-mc-option').forEach(optBtn => {
+            optBtn.addEventListener('click', () => {
+              block.querySelectorAll('.exam-mc-option').forEach(b => b.classList.remove('selected'));
+              optBtn.classList.add('selected');
+              hiddenInput.value = optBtn.dataset.value;
+              updateMakerExamAnsweredCount();
+            });
+          });
+        } else {
+          block.querySelector('input[type="text"]').addEventListener('input', updateMakerExamAnsweredCount);
+        }
+
+        block.querySelector('.exam-hint-btn').addEventListener('click', (e) => {
+          const hintBox = block.querySelector('.exam-hint-box');
+          hintBox.textContent = `💡 ${q.hint}`;
+          hintBox.classList.add('shown');
+          e.target.disabled = true;
+        });
+
+        block.querySelector('.exam-ask-tutor-btn').addEventListener('click', () => {
+          openSideTutorForQuestion(q.q);
+        });
+
+        makerExamQuestionsEl.appendChild(block);
+      });
+      updateMakerExamAnsweredCount();
+    }
+
+    function updateMakerExamAnsweredCount() {
+      const mcHidden = [...makerExamQuestionsEl.querySelectorAll('.exam-mc-hidden-input')];
+      const textInputs = [...makerExamQuestionsEl.querySelectorAll('input[type="text"]')];
+      const total = mcHidden.length + textInputs.length;
+      const answered = mcHidden.filter(i => i.value.trim()).length + textInputs.filter(i => i.value.trim()).length;
+      makerExamAnsweredCount.textContent = `${answered} / ${total} answered`;
+    }
+
+    function startMakerExamTimer() {
+      makerExamSeconds = 0;
+      clearInterval(makerExamTimerInterval);
+      makerExamTimerInterval = setInterval(() => {
+        makerExamSeconds++;
+        const m = String(Math.floor(makerExamSeconds / 60)).padStart(2, '0');
+        const s = String(makerExamSeconds % 60).padStart(2, '0');
+        makerExamTimerEl.textContent = `${m}:${s}`;
+      }, 1000);
+    }
+
+    makerExamSubmitBtn.addEventListener('click', async () => {
+      const mcHidden = [...makerExamQuestionsEl.querySelectorAll('.exam-mc-hidden-input')];
+      const textInputs = [...makerExamQuestionsEl.querySelectorAll('input[type="text"]')];
+      const allInputs = [...mcHidden, ...textInputs];
+      const unanswered = allInputs.filter(i => !i.value.trim()).length;
+      if (unanswered > 0 && !confirm(`${unanswered} question(s) are still blank. Submit anyway?`)) return;
+
+      clearInterval(makerExamTimerInterval);
+      makerExamSubmitBtn.disabled = true;
+      makerExamSubmitBtn.textContent = 'Grading…';
+
+      const answerMap = {};
+      allInputs.forEach(i => {answerMap[i.dataset.cardId] = i.value.trim();});
+
+      const results = [];
+      for (const q of makerExamQuestions) {
+        const userAnswer = answerMap[q.id] || '';
+        if (!userAnswer) {
+          results.push({q, correct: false, feedback: 'No answer given.', userAnswer: ''});
+          continue;
+        }
+        if (q.type === 'mc') {
+          const isCorrect = userAnswer === q.answer;
+          results.push({q, correct: isCorrect, feedback: isCorrect ? 'Correct choice.' : '', userAnswer});
+        } else {
+          try {
+            const grade = await gradeAnswer(q.q, q.answer, userAnswer);
+            results.push({q, correct: grade.correct, feedback: grade.feedback, userAnswer});
+          } catch (err) {
+            results.push({q, correct: false, feedback: 'Could not grade this one — try reviewing it manually.', userAnswer});
+          }
+        }
+      }
+
+      showMakerExamResults(results);
+      makerExamSubmitBtn.disabled = false;
+      makerExamSubmitBtn.textContent = 'Submit Exam';
+    });
+
+    function showMakerExamResults(results) {
+      makerExamBody.style.display = 'none';
+      makerExamResultsEl.style.display = 'block';
+
+      const right = results.filter(r => r.correct).length;
+      const pct = Math.round((right / results.length) * 100);
+      makerExamScoreBanner.textContent = `${right} / ${results.length} correct (${pct}%)`;
+
+      makerExamResultsList.innerHTML = '';
+      results.forEach((r, i) => {
+        const block = document.createElement('div');
+        block.className = 'exam-result-block ' + (r.correct ? 'right' : 'wrong');
+        block.innerHTML = `
+          <div class="tag" style="font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:0.08em; color:var(--ink-soft);">QUESTION ${i + 1} — ${r.correct ? 'CORRECT' : 'INCORRECT'}</div>
+          <div class="q-text" style="font-size:14px; margin:6px 0;">${escapeHtml(r.q.q)}</div>
+          <div class="verdict-line">Your answer: ${escapeHtml(r.userAnswer || '(blank)')}</div>
+          <div class="verdict-line">Correct answer: ${escapeHtml(r.q.answer)}</div>
+          <div class="verdict-line">${escapeHtml(r.feedback || '')}</div>
+        `;
+        makerExamResultsList.appendChild(block);
+      });
+    }
+
+    document.getElementById('makerExamCloseResultsBtn').addEventListener('click', () => {
+      makerExamOverlay.classList.remove('open');
+      showFloatTutorFab(false);
+    });
+    document.getElementById('closeMakerExamBtn').addEventListener('click', () => {
+      clearInterval(makerExamTimerInterval);
+      makerExamOverlay.classList.remove('open');
+      showFloatTutorFab(false);
+    });
+
+    // ---------- SIDE TUTOR DRAWER (Socratic help from inside quiz/exam) ----------
+    const sideTutorDrawer = document.getElementById('sideTutorDrawer');
+    const sideTutorChat = document.getElementById('sideTutorChat');
+    const sideTutorInput = document.getElementById('sideTutorInput');
+    const floatTutorFab = document.getElementById('floatTutorFab');
+    let sideTutorHistory = [];
+
+    function showFloatTutorFab(show) {
+      floatTutorFab.classList.toggle('visible', show);
+    }
+
+    floatTutorFab.addEventListener('click', () => openSideTutorForQuestion(null));
+
+    function openSideTutorForQuestion(questionText) {
+      sideTutorDrawer.classList.add('open');
+      if (questionText) {
+        sideTutorChat.innerHTML = '';
+        sideTutorHistory = [];
+        appendSideTutorBubble('tutor', `Let's work through this together: "${questionText}" — what have you tried so far, or where are you stuck?`);
+        sideTutorHistory.push({role: 'model', parts: [{text: `Let's work through this together: "${questionText}" — what have you tried so far, or where are you stuck?`}]});
+      } else if (sideTutorHistory.length === 0) {
+        appendSideTutorBubble('tutor', 'Hi! What are you stuck on? Tell me the question and where your thinking is at.');
+      }
+    }
+
+    document.getElementById('closeSideTutorBtn').addEventListener('click', () => {
+      sideTutorDrawer.classList.remove('open');
+    });
+
+    function appendSideTutorBubble(role, text) {
+      const row = document.createElement('div');
+      row.className = `msg-row ${role}`;
+      row.innerHTML = `
+        <div class="bubble">
+          ${role === 'tutor' ? '<span class="tutor-label">SOCRATIC TUTOR</span>' : ''}
+          <p>${role === 'user' ? escapeHtml(text) : text}</p>
+        </div>
+      `;
+      sideTutorChat.appendChild(row);
+      sideTutorChat.scrollTop = sideTutorChat.scrollHeight;
+      if (role === 'tutor' && window.renderMathInElement) {
+        renderMathInElement(row, {
+          delimiters: [
+            {left: "$$", right: "$$", display: true},
+            {left: "$", right: "$", display: false},
+            {left: "\\(", right: "\\)", display: false},
+            {left: "\\[", right: "\\]", display: true}
+          ]
+        });
+      }
+    }
+
+    async function sendSideTutorMessage() {
+      const text = sideTutorInput.value.trim();
+      if (!text) return;
+      if (!getKey()) {openSettings(); return;}
+
+      appendSideTutorBubble('user', text);
+      sideTutorInput.value = '';
+      sideTutorHistory.push({role: 'user', parts: [{text}]});
+
+      const systemInstruction = "You are a patient Socratic tutor helping a student with a specific quiz/exam question. Guide them step-by-step using targeted questions. Do NOT reveal the final answer outright unless they explicitly ask you to just confirm it after real effort. Use standard LaTeX for math: wrap inline math in single dollar signs like $\\frac{1}{2}$, and larger equations in double dollar signs like $$x^2+5x+6=0$$. Do not wrap normal English text in LaTeX.";
+
+      try {
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(getModel())}:generateContent`, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json', 'X-goog-api-key': getKey()},
+          body: JSON.stringify({
+            systemInstruction: {parts: [{text: systemInstruction}]},
+            contents: sideTutorHistory
+          })
+        });
+        const data = await res.json();
+        const aiReply = data?.candidates?.[0]?.content?.parts?.[0]?.text || "Could you rephrase that?";
+        sideTutorHistory.push({role: 'model', parts: [{text: aiReply}]});
+        appendSideTutorBubble('tutor', aiReply);
+      } catch (e) {
+        appendSideTutorBubble('tutor', 'An error occurred while connecting to the tutor.');
+      }
+    }
+
+    document.getElementById('sideTutorSendBtn').addEventListener('click', sendSideTutorMessage);
+    sideTutorInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {e.preventDefault(); sendSideTutorMessage();}
+    });
+
+    // Settings
+    const settingsOverlay = document.getElementById('settingsOverlay');
+    function openSettings() {
+      document.getElementById('apiKeyInput').value = getKey();
+      document.getElementById('modelSelect').value = getModel();
+      settingsOverlay.classList.add('open');
+    }
+
+    document.getElementById('openSettingsBtn').addEventListener('click', openSettings);
+    document.getElementById('settingsCancelBtn').addEventListener('click', () => settingsOverlay.classList.remove('open'));
+
+    document.getElementById('settingsSaveBtn').addEventListener('click', () => {
+      localStorage.setItem(LS_KEY, document.getElementById('apiKeyInput').value.trim());
+      localStorage.setItem(LS_MODEL, document.getElementById('modelSelect').value);
+      settingsOverlay.classList.remove('open');
+    });
+
+    // Init App
+    renderDeck();
+
+    // Bug Fix: Correctly initialize Socratic Chats on load
+    if (tutorChats.length === 0) {
+      createTutorChat("New Conversation");
+    } else {
+      currentChatId = tutorChats[0].id;
+      renderTutorChats();
+      loadTutorChat(currentChatId);
+    }
+  </script>
+</body>
+
+</html>
