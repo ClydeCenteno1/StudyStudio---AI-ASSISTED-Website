@@ -2238,24 +2238,42 @@
   <div class="overlay" id="settingsOverlay">
     <div class="modal">
       <h3>Settings</h3>
-      <div class="sub">Your Gemini API key is stored locally in your browser.</div>
+      <div class="sub">Your API key is stored locally in your browser.</div>
       <div class="field">
-        <label for="apiKeyInput">Gemini API Key</label>
-        <input type="password" id="apiKeyInput" placeholder="Paste your API key">
+        <label for="providerSelect">AI Provider</label>
+        <select id="providerSelect">
+          <option value="gemini">Google Gemini</option>
+          <option value="groq">Groq</option>
+        </select>
+        <div class="note">Pick which provider to use. Each has its own API key and model list below.</div>
+      </div>
+
+      <div class="field" id="geminiFields">
+        <label for="apiKeyInputGemini">Gemini API Key</label>
+        <input type="password" id="apiKeyInputGemini" placeholder="Paste your Gemini API key">
         <div class="note">Get a free key at <a href="https://aistudio.google.com/apikey" target="_blank"
             rel="noopener">aistudio.google.com/apikey</a></div>
-      </div>
-      <div class="field">
-        <label for="modelSelect">AI Model</label>
-        <select id="modelSelect">
+        <label for="geminiModelSelect" style="margin-top:12px;">Model</label>
+        <select id="geminiModelSelect">
           <option value="gemini-3.6-flash">Gemini 3.6 Flash (Free, Recommended)</option>
-          <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash-Lite (Free, Ultra Fast)</option>
-          <option value="gemini-3.5-flash">Gemini 3.5 Flash (Free, Fast)</option>
-          <option value="gemini-2.5-pro">Gemini 2.5 Pro (Free, Powerful)</option>
-          <option value="gemini-2.5-flash">Gemini 2.5 Flash (Legacy)</option>
         </select>
-        <div class="note">All listed models are available on the free tier (no credit card required).</div>
       </div>
+
+      <div class="field" id="groqFields" style="display:none;">
+        <label for="apiKeyInputGroq">Groq API Key</label>
+        <input type="password" id="apiKeyInputGroq" placeholder="Paste your Groq API key">
+        <div class="note">Get a free key at <a href="https://console.groq.com/keys" target="_blank"
+            rel="noopener">console.groq.com/keys</a></div>
+        <label for="groqModelSelect" style="margin-top:12px;">Model</label>
+        <select id="groqModelSelect">
+          <option value="openai/gpt-oss-120b">GPT-OSS 120B (Recommended)</option>
+          <option value="openai/gpt-oss-20b">GPT-OSS 20B (Faster)</option>
+          <option value="qwen/qwen3.6-27b">Qwen 3.6 27B (Vision + JSON mode)</option>
+        </select>
+        <div class="note">Image/PDF attachments (Socratic tutor photo, mock test files) require a vision-capable
+          model like Qwen 3.6 27B — other Groq models will ignore attached images.</div>
+      </div>
+
       <div class="modal-actions">
         <button class="btn btn-ghost" id="settingsCancelBtn">Cancel</button>
         <button class="btn btn-primary" id="settingsSaveBtn">Save</button>
@@ -2266,11 +2284,102 @@
   <script>
     const LS_CARDS = 'deckflip_cards';
     const LS_DECK_NAMES = 'deckflip_deck_names';
-    const LS_KEY = 'deckflip_gemini_key';
-    const LS_MODEL = 'deckflip_gemini_model';
+    const LS_PROVIDER = 'deckflip_provider';
+    const LS_GEMINI_KEY = 'deckflip_gemini_key';
+    const LS_GEMINI_MODEL = 'deckflip_gemini_model';
+    const LS_GROQ_KEY = 'deckflip_groq_key';
+    const LS_GROQ_MODEL = 'deckflip_groq_model';
 
-    function getKey() {return localStorage.getItem(LS_KEY) || '';}
-    function getModel() {return localStorage.getItem(LS_MODEL) || 'gemini-3.6-flash';}
+    function getProvider() {return localStorage.getItem(LS_PROVIDER) || 'gemini';}
+    function getKey() {
+      return getProvider() === 'groq'
+        ? (localStorage.getItem(LS_GROQ_KEY) || '')
+        : (localStorage.getItem(LS_GEMINI_KEY) || '');
+    }
+    function getModel() {
+      return getProvider() === 'groq'
+        ? (localStorage.getItem(LS_GROQ_MODEL) || 'openai/gpt-oss-120b')
+        : (localStorage.getItem(LS_GEMINI_MODEL) || 'gemini-3.6-flash');
+    }
+
+    /* ---------- Unified AI call helper ----------
+       Works with either Gemini (native REST) or Groq (OpenAI-compatible
+       chat/completions), depending on the currently selected provider.
+
+       contents: array of Gemini-style turns: {role:'user'|'model', parts:[{text} | {inlineData:{mimeType,data}}]}
+       Returns: { text } — the plain text reply. Throws on error. */
+    async function callAI({systemInstruction, contents, jsonSchema, temperature, maxTokens} = {}) {
+      const provider = getProvider();
+      const key = getKey();
+      const model = getModel();
+      if (!key) throw new Error('No API key set for the selected provider.');
+
+      if (provider === 'gemini') {
+        const body = {contents};
+        if (systemInstruction) body.systemInstruction = {parts: [{text: systemInstruction}]};
+        const generationConfig = {};
+        if (temperature !== undefined) generationConfig.temperature = temperature;
+        if (maxTokens !== undefined) generationConfig.maxOutputTokens = maxTokens;
+        if (jsonSchema) {
+          generationConfig.responseMimeType = 'application/json';
+          generationConfig.responseSchema = jsonSchema;
+        }
+        if (Object.keys(generationConfig).length) body.generationConfig = generationConfig;
+
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json', 'X-goog-api-key': key},
+          body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.error?.message || `Request failed (${res.status})`);
+        const finishReason = data?.candidates?.[0]?.finishReason;
+        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!text) throw new Error(finishReason ? `No text returned (finishReason: ${finishReason})` : 'No text returned by the model.');
+        return {text};
+      }
+
+      // ---- Groq (OpenAI-compatible chat/completions) ----
+      const messages = [];
+      if (systemInstruction) messages.push({role: 'system', content: systemInstruction});
+      contents.forEach(turn => {
+        const role = turn.role === 'model' ? 'assistant' : 'user';
+        const textParts = turn.parts.filter(p => p.text !== undefined).map(p => p.text).join('\n');
+        const imageParts = turn.parts.filter(p => p.inlineData);
+
+        if (imageParts.length === 0) {
+          messages.push({role, content: textParts});
+        } else {
+          // Vision content array (OpenAI-compatible format Groq expects)
+          const contentArr = [];
+          if (textParts) contentArr.push({type: 'text', text: textParts});
+          imageParts.forEach(p => {
+            contentArr.push({
+              type: 'image_url',
+              image_url: {url: `data:${p.inlineData.mimeType};base64,${p.inlineData.data}`}
+            });
+          });
+          messages.push({role, content: contentArr});
+        }
+      });
+
+      const body = {model, messages};
+      if (temperature !== undefined) body.temperature = temperature;
+      if (maxTokens !== undefined) body.max_completion_tokens = maxTokens;
+      if (jsonSchema) body.response_format = {type: 'json_object'};
+
+      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${key}`},
+        body: JSON.stringify(body)
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error?.message || `Request failed (${res.status})`);
+      const text = data?.choices?.[0]?.message?.content;
+      if (!text) throw new Error('No text returned by the model.');
+      return {text};
+    }
 
     // Navigation
     const tabDeckBtn = document.getElementById('tabDeckBtn');
@@ -2650,9 +2759,6 @@
        correct one closely enough — not exact-match, but not fully
        lenient either. Returns { correct, feedback }. */
     async function gradeAnswer(question, correctAnswer, userAnswer) {
-      const key = getKey();
-      const model = getModel();
-
       const prompt =
         `You are grading a flashcard answer. The CORRECT ANSWER may bundle together a
 core idea plus supporting details (examples, exact syntax, specific commands,
@@ -2689,12 +2795,12 @@ words:
 Respond with ONLY a JSON object like:
 {"correct": true, "feedback": "..."}`;
 
-      const body = {
-        contents: [{parts: [{text: prompt}]}],
-        generationConfig: {
+      let text;
+      try {
+        const result = await callAI({
+          contents: [{role: 'user', parts: [{text: prompt}]}],
           temperature: 0,
-          responseMimeType: 'application/json',
-          responseSchema: {
+          jsonSchema: {
             type: 'OBJECT',
             properties: {
               correct: {type: 'BOOLEAN'},
@@ -2702,26 +2808,14 @@ Respond with ONLY a JSON object like:
             },
             required: ['correct', 'feedback']
           }
-        }
-      };
-
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json', 'X-goog-api-key': key},
-        body: JSON.stringify(body)
-      });
-
-      if (!res.ok) {
-        const errBody = await res.text();
-        throw new Error(`Grading failed (${res.status}): ${errBody.slice(0, 150)}`);
+        });
+        text = result.text;
+      } catch (err) {
+        throw new Error(`Grading failed: ${err.message}`);
       }
 
-      const data = await res.json();
-      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (!text) throw new Error('Grading returned nothing — try again.');
-
-      const parsed = JSON.parse(text);
+      const jsonText = text.replace(/```json|```/g, '').trim();
+      const parsed = JSON.parse(jsonText);
       return {
         correct: parsed.correct === true,
         feedback: parsed.feedback || ''
@@ -2842,28 +2936,17 @@ Write exactly 3 incorrect but plausible answer options for this question. Each s
 Respond with ONLY a JSON object like:
 {"distractors": ["...", "...", "..."]}`;
 
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(getModel())}:generateContent`, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json', 'X-goog-api-key': getKey()},
-        body: JSON.stringify({
-          contents: [{parts: [{text: prompt}]}],
-          generationConfig: {
-            temperature: 0.7,
-            responseMimeType: 'application/json',
-            responseSchema: {
-              type: 'OBJECT',
-              properties: {distractors: {type: 'ARRAY', items: {type: 'STRING'}}},
-              required: ['distractors']
-            }
-          }
-        })
+      const {text} = await callAI({
+        contents: [{role: 'user', parts: [{text: prompt}]}],
+        temperature: 0.7,
+        jsonSchema: {
+          type: 'OBJECT',
+          properties: {distractors: {type: 'ARRAY', items: {type: 'STRING'}}},
+          required: ['distractors']
+        }
       });
-
-      if (!res.ok) throw new Error(`Request failed (${res.status})`);
-      const data = await res.json();
-      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (!text) throw new Error('No response from model.');
-      const parsed = JSON.parse(text);
+      const jsonText = text.replace(/```json|```/g, '').trim();
+      const parsed = JSON.parse(jsonText);
       const distractors = Array.isArray(parsed.distractors) ? parsed.distractors.slice(0, 3) : [];
       while (distractors.length < 3) distractors.push('None of the above');
       return distractors;
@@ -3064,30 +3147,11 @@ Return ONLY a JSON array, no other text, with exactly two properties per object:
 Notes:
 ${text}`;
 
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(getModel())}:generateContent`, {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json', 'X-goog-api-key': getKey()},
-          body: JSON.stringify({
-            contents: [{parts: [{text: flashcardPrompt}]}],
-            generationConfig: {temperature: 0.4, maxOutputTokens: 65536}
-          })
+        const {text: rawText} = await callAI({
+          contents: [{role: 'user', parts: [{text: flashcardPrompt}]}],
+          temperature: 0.4,
+          maxTokens: 65536
         });
-        const data = await res.json();
-
-        if (!res.ok) {
-          throw new Error(data?.error?.message || `Request failed with status ${res.status}`);
-        }
-
-        const finishReason = data?.candidates?.[0]?.finishReason;
-        const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-
-        if (!rawText) {
-          throw new Error(
-            finishReason
-              ? `No text returned (finishReason: ${finishReason})`
-              : 'No text returned by the model.'
-          );
-        }
 
         const jsonText = rawText.replace(/```json|```/g, '').trim();
 
@@ -3304,17 +3368,10 @@ ${text}`;
       const systemInstruction = "You are a patient Socratic Math & Science tutor. Guide the student step-by-step using targeted questions. Do NOT reveal complete solutions immediately unless asked to verify final answers. Use standard LaTeX formatting for all mathematical expressions. Wrap inline math in single dollar signs, for example: $\frac{1}{2}$ Wrap larger equations in double dollar signs: $$x^2+5x+6=0$$Do not wrap normal English text in LaTeX.";
 
       try {
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(getModel())}:generateContent`, {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json', 'X-goog-api-key': getKey()},
-          body: JSON.stringify({
-            systemInstruction: {parts: [{text: systemInstruction}]},
-            contents: currentChat.history
-          })
+        const {text: aiReply} = await callAI({
+          systemInstruction,
+          contents: currentChat.history
         });
-
-        const data = await res.json();
-        const aiReply = data?.candidates?.[0]?.content?.parts?.[0]?.text || "I couldn't process that step. Could you rephrase?";
 
         currentChat.history.push({
           role: 'model',
@@ -3325,7 +3382,8 @@ ${text}`;
 
         appendChatBubble('tutor', aiReply);
       } catch (e) {
-        appendChatBubble('tutor', 'An error occurred while connecting to the AI tutor.');
+        console.error('Socratic tutor error:', e);
+        appendChatBubble('tutor', `An error occurred while connecting to the AI tutor: ${e.message || 'unknown error'}`);
       }
     }
 
@@ -3554,28 +3612,20 @@ Make sure every question is directly answerable from the topic/material given �
 Return ONLY a JSON array of objects, no other text, in this exact shape:
 [{"type":"mc","q":"...","options":["...","...","...","..."],"answer":"...","hint":"..."}, {"type":"identification","q":"...","answer":"...","hint":"..."}]`;
 
+        if (makerFiles.length && getProvider() === 'groq' && getModel() !== 'qwen/qwen3.6-27b') {
+          throw new Error('The selected Groq model doesn\'t support image/file attachments. Switch to "Qwen 3.6 27B" in Settings, or remove the attached files.');
+        }
+
         const parts = [{text: prompt}];
         makerFiles.forEach(f => {
           parts.push({inlineData: {mimeType: f.mimeType, data: f.base64}});
         });
 
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(getModel())}:generateContent`, {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json', 'X-goog-api-key': getKey()},
-          body: JSON.stringify({
-            contents: [{parts}],
-            generationConfig: {temperature: 0.5, maxOutputTokens: 65536}
-          })
+        const {text: rawText} = await callAI({
+          contents: [{role: 'user', parts}],
+          temperature: 0.5,
+          maxTokens: 65536
         });
-
-        const data = await res.json();
-        if (!res.ok) throw new Error(data?.error?.message || `Request failed with status ${res.status}`);
-
-        const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (!rawText) {
-          const finishReason = data?.candidates?.[0]?.finishReason;
-          throw new Error(finishReason ? `No text returned (finishReason: ${finishReason})` : 'No text returned by the model.');
-        }
 
         const jsonText = rawText.replace(/```json|```/g, '').trim();
         let questions;
@@ -4019,16 +4069,10 @@ Return ONLY a JSON array of objects, no other text, in this exact shape:
       const systemInstruction = "You are a patient Socratic tutor helping a student with a specific quiz/exam question. Guide them step-by-step using targeted questions. Do NOT reveal the final answer outright unless they explicitly ask you to just confirm it after real effort. Use standard LaTeX for math: wrap inline math in single dollar signs like $\\frac{1}{2}$, and larger equations in double dollar signs like $$x^2+5x+6=0$$. Do not wrap normal English text in LaTeX.";
 
       try {
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(getModel())}:generateContent`, {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json', 'X-goog-api-key': getKey()},
-          body: JSON.stringify({
-            systemInstruction: {parts: [{text: systemInstruction}]},
-            contents: sideTutorHistory
-          })
+        const {text: aiReply} = await callAI({
+          systemInstruction,
+          contents: sideTutorHistory
         });
-        const data = await res.json();
-        const aiReply = data?.candidates?.[0]?.content?.parts?.[0]?.text || "Could you rephrase that?";
         sideTutorHistory.push({role: 'model', parts: [{text: aiReply}]});
         appendSideTutorBubble('tutor', aiReply);
       } catch (e) {
@@ -4043,9 +4087,24 @@ Return ONLY a JSON array of objects, no other text, in this exact shape:
 
     // Settings
     const settingsOverlay = document.getElementById('settingsOverlay');
+    const providerSelect = document.getElementById('providerSelect');
+    const geminiFields = document.getElementById('geminiFields');
+    const groqFields = document.getElementById('groqFields');
+
+    function updateSettingsFieldVisibility() {
+      const isGroq = providerSelect.value === 'groq';
+      geminiFields.style.display = isGroq ? 'none' : 'block';
+      groqFields.style.display = isGroq ? 'block' : 'none';
+    }
+    providerSelect.addEventListener('change', updateSettingsFieldVisibility);
+
     function openSettings() {
-      document.getElementById('apiKeyInput').value = getKey();
-      document.getElementById('modelSelect').value = getModel();
+      providerSelect.value = getProvider();
+      document.getElementById('apiKeyInputGemini').value = localStorage.getItem(LS_GEMINI_KEY) || '';
+      document.getElementById('geminiModelSelect').value = localStorage.getItem(LS_GEMINI_MODEL) || 'gemini-3.6-flash';
+      document.getElementById('apiKeyInputGroq').value = localStorage.getItem(LS_GROQ_KEY) || '';
+      document.getElementById('groqModelSelect').value = localStorage.getItem(LS_GROQ_MODEL) || 'openai/gpt-oss-120b';
+      updateSettingsFieldVisibility();
       settingsOverlay.classList.add('open');
     }
 
@@ -4053,8 +4112,11 @@ Return ONLY a JSON array of objects, no other text, in this exact shape:
     document.getElementById('settingsCancelBtn').addEventListener('click', () => settingsOverlay.classList.remove('open'));
 
     document.getElementById('settingsSaveBtn').addEventListener('click', () => {
-      localStorage.setItem(LS_KEY, document.getElementById('apiKeyInput').value.trim());
-      localStorage.setItem(LS_MODEL, document.getElementById('modelSelect').value);
+      localStorage.setItem(LS_PROVIDER, providerSelect.value);
+      localStorage.setItem(LS_GEMINI_KEY, document.getElementById('apiKeyInputGemini').value.trim());
+      localStorage.setItem(LS_GEMINI_MODEL, document.getElementById('geminiModelSelect').value);
+      localStorage.setItem(LS_GROQ_KEY, document.getElementById('apiKeyInputGroq').value.trim());
+      localStorage.setItem(LS_GROQ_MODEL, document.getElementById('groqModelSelect').value);
       settingsOverlay.classList.remove('open');
     });
 
