@@ -32,6 +32,12 @@
       --danger: #c1594b;
       --border: rgba(237, 234, 226, 0.12);
       --radius: 10px;
+      /* Tells the browser to use its own dark palette for native controls
+         (dropdown option lists, scrollbars, etc). Without this, some browsers
+         render an open <select> list with a light system popup and dark text
+         regardless of the CSS color rules on <option> — which is why the
+         provider/model names in Settings looked black/unreadable. */
+      color-scheme: dark;
     }
 
     * {
@@ -807,6 +813,51 @@
       color: var(--ink-soft);
     }
 
+    .exam-feedback-panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--accent);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      margin-bottom: 22px;
+    }
+
+    .exam-feedback-panel .fb-title {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      color: var(--accent);
+      margin-bottom: 10px;
+    }
+
+    .exam-feedback-panel .fb-body {
+      font-size: 13.5px;
+      line-height: 1.6;
+      color: var(--ink);
+    }
+
+    .exam-feedback-panel .fb-body p {
+      margin: 0 0 10px;
+    }
+
+    .exam-feedback-panel .fb-body p:last-child {
+      margin-bottom: 0;
+    }
+
+    .exam-feedback-panel .fb-body ul {
+      margin: 6px 0 10px;
+      padding-left: 18px;
+    }
+
+    .exam-feedback-panel .fb-body li {
+      margin-bottom: 4px;
+    }
+
+    .exam-feedback-panel.loading .fb-body {
+      color: var(--ink-soft);
+      font-style: italic;
+    }
+
     /* ---------- SOCRATIC TUTOR STYLES ---------- */
     .socratic-main {
       flex: 1;
@@ -933,6 +984,52 @@
       color: #8a7f68;
       margin-bottom: 8px;
       display: block;
+    }
+
+    /* ---------- Markdown tables rendered inside tutor bubbles ---------- */
+    .bubble .md-table-wrap {
+      overflow-x: auto;
+      margin: 10px 0;
+      border-radius: 8px;
+      border: 1px solid rgba(36, 33, 28, 0.14);
+    }
+
+    .bubble table.md-table {
+      border-collapse: collapse;
+      width: 100%;
+      font-size: 13.5px;
+      background: rgba(255, 255, 255, 0.35);
+    }
+
+    .bubble table.md-table th,
+    .bubble table.md-table td {
+      padding: 8px 12px;
+      text-align: left;
+      border-bottom: 1px solid rgba(36, 33, 28, 0.12);
+      border-right: 1px solid rgba(36, 33, 28, 0.08);
+      vertical-align: top;
+    }
+
+    .bubble table.md-table th:last-child,
+    .bubble table.md-table td:last-child {
+      border-right: none;
+    }
+
+    .bubble table.md-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .bubble table.md-table thead th {
+      background: rgba(184, 84, 80, 0.1);
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #8a7f68;
+    }
+
+    .bubble table.md-table tbody tr:nth-child(even) {
+      background: rgba(36, 33, 28, 0.03);
     }
 
     .composer {
@@ -1862,6 +1959,12 @@
           <p>Stuck on a problem? Talk it through step-by-step with a tutor that asks guiding questions instead of just giving answers.</p>
           <div class="go">OPEN →</div>
         </button>
+        <button class="landing-card" id="landingGwaBtn">
+          <div class="icon">🎓</div>
+          <h3>GWA Calculator</h3>
+          <p>Compute your Philippine General Weighted Average — add each subject's grade and units, and get your GWA instantly.</p>
+          <div class="go">OPEN →</div>
+        </button>
       </div>
     </div>
   </div>
@@ -1875,6 +1978,7 @@
         <button class="nav-tab active" id="tabDeckBtn">⚡ Flashcard Deck</button>
         <button class="nav-tab" id="tabMakerBtn">📝 Mock Quiz &amp; Exam</button>
         <button class="nav-tab" id="tabSocraticBtn">🏛️ Socratic Tutor</button>
+        <button class="nav-tab" id="tabGwaBtn">🎓 GWA Calculator</button>
       </div>
     </div>
     <div class="topbar-actions">
@@ -2022,6 +2126,40 @@
     </div>
   </div>
 
+  <!-- VIEW 3: GWA CALCULATOR -->
+  <div class="app-view" id="gwaView">
+    <div class="maker-container">
+      <h2>GWA Calculator</h2>
+      <div class="sub">Philippine General Weighted Average — 1.00 (best) to 5.00 (failed), weighted by credit units: GWA = Σ(Grade × Units) ÷ Σ(Units).</div>
+
+      <div id="gwaRows"></div>
+
+      <button class="btn btn-ghost" id="gwaAddRowBtn" style="width:100%; margin-top:8px;">+ Add Subject</button>
+
+      <div class="maker-row" style="margin-top:16px;">
+        <label style="display:flex; align-items:center; gap:8px; font-size:13px; color:var(--ink-soft); cursor:pointer;">
+          <input type="checkbox" id="gwaExcludeToggle">
+          Exclude subjects checked "Exclude" (e.g. PE, NSTP) from the GWA computation
+        </label>
+      </div>
+
+      <div style="display:flex; gap:10px; margin-top:14px;">
+        <button class="btn btn-primary" id="gwaCalculateBtn" style="flex:1; padding:14px;">Calculate GWA</button>
+        <button class="btn btn-ghost" id="gwaResetBtn" style="padding:14px 20px;">Reset</button>
+      </div>
+
+      <div id="gwaResultBox" style="display:none; margin-top:18px;">
+        <div class="exam-score-banner" id="gwaResultBanner"></div>
+        <div class="hint-text" id="gwaResultDetail" style="text-align:center; margin-top:8px;"></div>
+      </div>
+
+      <div class="hint-text" style="margin-top:20px; line-height:1.6;">
+        <strong>Grade equivalents:</strong> 1.00 (99–100%, Excellent) · 1.25 (96–98%) · 1.50 (93–95%) · 1.75 (90–92%) · 2.00 (87–89%) · 2.25 (84–86%) · 2.50 (81–83%) · 2.75 (78–80%) · 3.00 (75–77%, Passing) · 5.00 (Below 75%, Failed).
+        Policies on excluding PE/NSTP vary by school — check with your registrar for your institution's exact rules.
+      </div>
+    </div>
+  </div>
+
   <!-- MODE SELECTOR MODAL -->
   <div class="overlay" id="modeSelectOverlay">
     <div class="modal">
@@ -2072,6 +2210,26 @@
     </div>
   </div>
 
+  <!-- SHARED QUIZ RESULTS OVERLAY (used by both the deck quiz and the maker quiz) -->
+  <div class="overlay" id="quizResultsOverlay">
+    <div class="study-container" style="max-width:760px;">
+      <div class="study-header">
+        <span id="quizResultsTitle" class="mono">QUIZ RESULTS</span>
+        <button class="icon-btn" id="closeQuizResultsBtn" title="Close">✕</button>
+      </div>
+      <div class="exam-score-banner" id="quizResultsScoreBanner"></div>
+      <div class="exam-feedback-panel" id="quizResultsFeedbackPanel" style="display:none;">
+        <div class="fb-title">WHERE TO FOCUS</div>
+        <div class="fb-body" id="quizResultsFeedbackBody"></div>
+      </div>
+      <div class="exam-questions" id="quizResultsList"></div>
+      <div class="study-controls">
+        <span></span>
+        <button class="btn btn-primary" id="quizResultsCloseBtn">Done</button>
+      </div>
+    </div>
+  </div>
+
   <!-- MOCK EXAM OVERLAY -->
   <div class="overlay" id="examOverlay">
     <div class="study-container" style="max-width:760px;">
@@ -2097,6 +2255,10 @@
 
       <div id="examResults" style="display:none;">
         <div class="exam-score-banner" id="examScoreBanner"></div>
+        <div class="exam-feedback-panel" id="examFeedbackPanel" style="display:none;">
+          <div class="fb-title">WHERE TO FOCUS</div>
+          <div class="fb-body" id="examFeedbackBody"></div>
+        </div>
         <div class="exam-questions" id="examResultsList"></div>
         <div class="study-controls">
           <span></span>
@@ -2209,6 +2371,10 @@
 
       <div id="makerExamResults" style="display:none;">
         <div class="exam-score-banner" id="makerExamScoreBanner"></div>
+        <div class="exam-feedback-panel" id="makerExamFeedbackPanel" style="display:none;">
+          <div class="fb-title">WHERE TO FOCUS</div>
+          <div class="fb-body" id="makerExamFeedbackBody"></div>
+        </div>
         <div class="exam-questions" id="makerExamResultsList"></div>
         <div class="study-controls">
           <span></span>
@@ -2257,6 +2423,7 @@
         <select id="geminiModelSelect">
           <option value="gemini-3.6-flash">Gemini 3.6 Flash (Free, Recommended)</option>
         </select>
+        <div class="note" id="geminiQuotaNote" style="margin-top:8px;"></div>
       </div>
 
       <div class="field" id="groqFields" style="display:none;">
@@ -2289,6 +2456,8 @@
     const LS_GEMINI_MODEL = 'deckflip_gemini_model';
     const LS_GROQ_KEY = 'deckflip_groq_key';
     const LS_GROQ_MODEL = 'deckflip_groq_model';
+    const LS_REQUEST_LOG = 'deckflip_request_log';
+    const LS_GRADE_CACHE = 'deckflip_grade_cache';
 
     function getProvider() {return localStorage.getItem(LS_PROVIDER) || 'gemini';}
     function getKey() {
@@ -2302,20 +2471,132 @@
         : (localStorage.getItem(LS_GEMINI_MODEL) || 'gemini-3.6-flash');
     }
 
+    /* ---------- Request budget tracking ----------
+       Gemini's free tier caps requests per DAY (e.g. 20/day for gemini-3.6-flash);
+       this can't be raised from the client — it's enforced by Google on their side.
+       What we CAN do is: (1) know how close we are to that ceiling before the API
+       tells us the hard way, and (2) warn the student early instead of letting them
+       burn through it mid-task. Log persists in localStorage and only counts calls
+       that actually reached the network (cache hits below don't count). */
+    const GEMINI_FREE_DAILY_LIMIT = 20;
+
+    function todayKey() {
+      const d = new Date();
+      return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+    }
+
+    function loadRequestLog() {
+      try {
+        const log = JSON.parse(localStorage.getItem(LS_REQUEST_LOG)) || {};
+        return log.day === todayKey() ? log : {day: todayKey(), gemini: 0, groq: 0};
+      } catch {
+        return {day: todayKey(), gemini: 0, groq: 0};
+      }
+    }
+
+    function logRequest(provider) {
+      const log = loadRequestLog();
+      log[provider] = (log[provider] || 0) + 1;
+      localStorage.setItem(LS_REQUEST_LOG, JSON.stringify(log));
+      return log;
+    }
+
+    function getRemainingGeminiRequests() {
+      const log = loadRequestLog();
+      return Math.max(0, GEMINI_FREE_DAILY_LIMIT - (log.gemini || 0));
+    }
+
+    /* ---------- Grading cache ----------
+       If the exact same question + correct answer + student answer gets graded
+       twice (re-submitting an exam, duplicate flashcards across decks, retrying
+       after an error), reuse the cached verdict instead of spending another
+       request on a question the AI already answered identically. Capped at 200
+       entries (oldest dropped first) so it can't grow unbounded. */
+    function gradeCacheKey(question, correctAnswer, userAnswer) {
+      return `${question}::${correctAnswer}::${userAnswer}`.toLowerCase().trim();
+    }
+
+    function loadGradeCache() {
+      try {return JSON.parse(localStorage.getItem(LS_GRADE_CACHE)) || {};} catch {return {};}
+    }
+
+    function getCachedGrade(question, correctAnswer, userAnswer) {
+      const cache = loadGradeCache();
+      return cache[gradeCacheKey(question, correctAnswer, userAnswer)] || null;
+    }
+
+    function setCachedGrade(question, correctAnswer, userAnswer, grade) {
+      const cache = loadGradeCache();
+      const key = gradeCacheKey(question, correctAnswer, userAnswer);
+      cache[key] = grade;
+      const keys = Object.keys(cache);
+      if (keys.length > 200) delete cache[keys[0]];
+      localStorage.setItem(LS_GRADE_CACHE, JSON.stringify(cache));
+    }
+
     /* ---------- Unified AI call helper ----------
        Works with either Gemini (native REST) or Groq (OpenAI-compatible
        chat/completions), depending on the currently selected provider.
 
        contents: array of Gemini-style turns: {role:'user'|'model', parts:[{text} | {inlineData:{mimeType,data}}]}
        Returns: { text } — the plain text reply. Throws on error. */
+
+    // Only these Groq models accept image_url content. Everything else is text-only —
+    // sending an array `content` to them is what caused "messages[N].content must be a string".
+    const GROQ_VISION_MODELS = ['qwen/qwen3.6-27b'];
+
+    // Keep only the most recent N turns (plus the very first turn, for context) when
+    // building the request. Every call was previously resending the ENTIRE chat history
+    // from turn 1, so payload size (and quota/token usage) grew without bound as a
+    // conversation went on — enough to blow past Gemini's free-tier daily cap and Groq's
+    // 8000 TPM limit within a few minutes of normal use.
+    const MAX_HISTORY_TURNS = 4;
+
+    function trimHistory(contents) {
+      if (!contents || contents.length <= MAX_HISTORY_TURNS) return contents || [];
+      return [contents[0], ...contents.slice(-(MAX_HISTORY_TURNS - 1))];
+    }
+
     async function callAI({systemInstruction, contents, jsonSchema, temperature, maxTokens} = {}) {
       const provider = getProvider();
       const key = getKey();
       const model = getModel();
       if (!key) throw new Error('No API key set for the selected provider.');
 
+      // Reasoning-capable models (GPT-OSS 120B/20B, Qwen 3.6) can spend a
+      // large chunk of the token budget on hidden chain-of-thought before
+      // writing any visible answer. Leaving max tokens unset let Groq apply
+      // its own (much smaller) server-side default, which was cutting
+      // responses off mid-reasoning — finish_reason: length with an empty
+      // message.content. This is worse on image-attached or broad "explain
+      // everything here" style requests, which also need more room for a
+      // longer visible answer on top of the reasoning overhead. Call sites
+      // can still override this for cases that genuinely want a short/cheap
+      // response (e.g. the distractor generator or feedback summary), but
+      // everything else now gets generous headroom by default.
+      if (maxTokens === undefined) maxTokens = 8192;
+
+      // Groq's free tier enforces an 8000 TOKENS-PER-MINUTE limit on
+      // openai/gpt-oss-120b specifically, and it counts the *requested*
+      // maxTokens (not just what's actually generated) against that budget.
+      // Requesting the 8192 default above, on top of even a small prompt,
+      // was enough to blow past 8000 TPM and get the request rejected before
+      // it ran at all ("Requested 8818 ... Limit 8000"). This clamp only
+      // kicks in for that specific provider+model combo, and only lowers
+      // maxTokens — it never raises a smaller, intentional value (like the
+      // distractor generator's maxTokens: 250) back up.
+      if (provider === 'groq' && model === 'openai/gpt-oss-120b') {
+        maxTokens = Math.min(maxTokens, 4096);
+      }
+
+      if (provider === 'gemini' && getRemainingGeminiRequests() <= 0) {
+        throw new Error(`You've used all ${GEMINI_FREE_DAILY_LIMIT} free Gemini requests for today. It resets tomorrow, or switch to Groq in Settings to keep going now.`);
+      }
+
+      const trimmedContents = trimHistory(contents);
+
       if (provider === 'gemini') {
-        const body = {contents};
+        const body = {contents: trimmedContents};
         if (systemInstruction) body.systemInstruction = {parts: [{text: systemInstruction}]};
         const generationConfig = {};
         if (temperature !== undefined) generationConfig.temperature = temperature;
@@ -2327,31 +2608,50 @@
         if (Object.keys(generationConfig).length) body.generationConfig = generationConfig;
 
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
-        const res = await fetch(url, {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json', 'X-goog-api-key': key},
-          body: JSON.stringify(body)
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data?.error?.message || `Request failed (${res.status})`);
+        let res;
+        try {
+          res = await fetch(url, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'X-goog-api-key': key},
+            body: JSON.stringify(body)
+          });
+        } catch (networkErr) {
+          throw new Error('Could not reach Gemini — check your internet connection and try again.');
+        }
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          const msg = data?.error?.message || `Request failed (${res.status})`;
+          if (res.status === 429) throw new Error(`Gemini free-tier limit reached. Wait a bit and try again, or switch provider in Settings. (${msg})`);
+          throw new Error(msg);
+        }
         const finishReason = data?.candidates?.[0]?.finishReason;
         const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
         if (!text) throw new Error(finishReason ? `No text returned (finishReason: ${finishReason})` : 'No text returned by the model.');
+        logRequest('gemini');
         return {text};
       }
 
       // ---- Groq (OpenAI-compatible chat/completions) ----
+      const modelSupportsVision = GROQ_VISION_MODELS.includes(model);
+      const hasImages = trimmedContents.some(turn => turn.parts.some(p => p.inlineData));
+      if (hasImages && !modelSupportsVision) {
+        throw new Error(`The model "${model}" doesn't support image attachments. Switch to Qwen 3.6 27B in Settings, or remove the attached image.`);
+      }
+
       const messages = [];
       if (systemInstruction) messages.push({role: 'system', content: systemInstruction});
-      contents.forEach(turn => {
+      trimmedContents.forEach(turn => {
         const role = turn.role === 'model' ? 'assistant' : 'user';
         const textParts = turn.parts.filter(p => p.text !== undefined).map(p => p.text).join('\n');
-        const imageParts = turn.parts.filter(p => p.inlineData);
+        const imageParts = modelSupportsVision ? turn.parts.filter(p => p.inlineData) : [];
 
         if (imageParts.length === 0) {
-          messages.push({role, content: textParts});
+          // content MUST be a plain string for every non-vision Groq model — this is the
+          // fix for "messages[N].content must be a string".
+          messages.push({role, content: textParts || ' '});
         } else {
-          // Vision content array (OpenAI-compatible format Groq expects)
+          // Vision content array (OpenAI-compatible format) — only ever sent to a model
+          // in GROQ_VISION_MODELS.
           const contentArr = [];
           if (textParts) contentArr.push({type: 'text', text: textParts});
           imageParts.forEach(p => {
@@ -2366,34 +2666,214 @@
 
       const body = {model, messages};
       if (temperature !== undefined) body.temperature = temperature;
-      if (maxTokens !== undefined) body.max_completion_tokens = maxTokens;
-      if (jsonSchema) body.response_format = {type: 'json_object'};
+      if (maxTokens !== undefined) {
+        // Groq enforces a hard ceiling on max_completion_tokens that is
+        // lower than the model's actual context window (confirmed by Groq's
+        // own error: "max_completion_tokens must be less than or equal to
+        // 16384..."). Sending 65536 for flashcard/quiz generation was
+        // rejected outright with a 400 before the request could even run.
+        // Requesting a larger context window doesn't help since this cap is
+        // separate from — and independent of — total context length.
+        body.max_completion_tokens = Math.min(maxTokens, 16384);
+      }
+      // Groq's json_object mode requires the model's response to be a JSON
+      // *object* at the top level — it rejects/mishandles a bare top-level
+      // array. Several call sites (e.g. flashcard generation) intentionally
+      // ask for an array via jsonSchema, since Gemini's responseSchema
+      // supports an ARRAY root natively. Rather than rewrite every call
+      // site, transparently wrap an array schema in {"items": [...]} for the
+      // Groq request only, and unwrap it below when reading the response.
+      const groqNeedsArrayUnwrap = !!jsonSchema && jsonSchema.type === 'ARRAY';
+      if (jsonSchema) {
+        body.response_format = {type: 'json_object'};
+        if (groqNeedsArrayUnwrap) {
+          // Steer the model toward the wrapper shape explicitly, since
+          // json_object mode otherwise gives no schema hint at all on Groq.
+          messages.push({
+            role: 'system',
+            content: 'Respond with ONLY a JSON object of the exact shape {"items": [...]}, where "items" is the requested array. Do not include any other text.'
+          });
+        }
+      }
+      // Reasoning-capable Groq models can otherwise emit their internal
+      // chain-of-thought inline in message.content (wrapped in
+      // <think>...</think>) or split it into a separate field. Per Groq's own
+      // docs, the correct suppression knob differs by model family:
+      //   - openai/gpt-oss-120b and openai/gpt-oss-20b do NOT support
+      //     reasoning_format at all (Groq silently ignores it); reasoning is
+      //     controlled via include_reasoning instead, and omitting this was
+      //     the root cause of "No text returned by the model" errors — with
+      //     reasoning_format alone, these models could put the entire answer
+      //     in a separate reasoning field, leaving message.content empty.
+      //   - qwen3-family models (e.g. qwen/qwen3.6-27b) DO support
+      //     reasoning_format, so 'hidden' is the right call there.
+      // stripThinkTags() below remains a defensive backstop either way, and
+      // the response parser also falls back to message.reasoning if
+      // message.content still comes back empty for any model.
+      if (model.startsWith('openai/gpt-oss')) {
+        body.include_reasoning = false;
+      } else {
+        body.reasoning_format = 'hidden';
+      }
 
-      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${key}`},
-        body: JSON.stringify(body)
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error?.message || `Request failed (${res.status})`);
-      const text = data?.choices?.[0]?.message?.content;
-      if (!text) throw new Error('No text returned by the model.');
+      let res;
+      try {
+        res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${key}`},
+          body: JSON.stringify(body)
+        });
+      } catch (networkErr) {
+        throw new Error('Could not reach Groq — check your internet connection and try again.');
+      }
+      let data = await res.json().catch(() => ({}));
+
+      // Groq's structured-output mode (response_format: json_object) can
+      // occasionally fail server-side validation on longer/more complex
+      // generations — the model produces text that isn't valid JSON, and
+      // Groq rejects it with a 400 instead of passing it back as normal
+      // content ("Failed to generate JSON. Please adjust your prompt. See
+      // 'failed_generation' for more details."). This is usually a transient
+      // one-off glitch, not a real problem with the request, so retry once
+      // automatically before giving up.
+      if (!res.ok && jsonSchema && (data?.error?.code === 'json_validate_failed' || data?.error?.failed_generation)) {
+        let retryRes;
+        try {
+          retryRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${key}`},
+            body: JSON.stringify(body)
+          });
+        } catch (networkErr) {
+          retryRes = null;
+        }
+        if (retryRes) {
+          const retryData = await retryRes.json().catch(() => ({}));
+          if (retryRes.ok) {
+            res = retryRes;
+            data = retryData;
+          } else if (retryData?.error?.failed_generation) {
+            // Still failing after retry. Rather than hard-error, hand back
+            // the raw (invalid) JSON text Groq attempted to generate — the
+            // call site's own truncation-recovery logic (which regex-scans
+            // for complete {"q":...,"a":...} objects) gets a chance to
+            // salvage whatever part of it was actually well-formed, instead
+            // of the user losing the whole generation to a formatting hiccup.
+            logRequest('groq');
+            return {text: retryData.error.failed_generation};
+          }
+        }
+      }
+
+      if (!res.ok) {
+        if (data?.error?.failed_generation) {
+          // First attempt failed this way and we couldn't retry (e.g. offline
+          // for the retry) — still hand back the raw text for salvage rather
+          // than just erroring out.
+          logRequest('groq');
+          return {text: data.error.failed_generation};
+        }
+
+        if (res.status === 429) {
+          // Groq's TPM limit is a rolling window across recent calls, not
+          // just this request — so batched call sites (e.g. the mock
+          // exam/quiz generator firing several batches back-to-back) can
+          // sail past it even though each individual batch is well within
+          // budget on its own. Groq's own error message tells us exactly how
+          // long until the window clears ("Please try again in 14.01s"), so
+          // parse that and wait it out automatically instead of forcing the
+          // user to manually retry.
+          const msg = data?.error?.message || 'Rate limit reached';
+          const waitMatch = msg.match(/try again in ([\d.]+)s/i);
+          if (waitMatch) {
+            const waitMs = Math.ceil(parseFloat(waitMatch[1]) * 1000) + 500; // small buffer
+            await new Promise(resolve => setTimeout(resolve, waitMs));
+
+            let retryRes2;
+            try {
+              retryRes2 = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${key}`},
+                body: JSON.stringify(body)
+              });
+            } catch (networkErr) {
+              retryRes2 = null;
+            }
+            if (retryRes2 && retryRes2.ok) {
+              res = retryRes2;
+              data = await retryRes2.json().catch(() => ({}));
+            } else {
+              throw new Error(`Groq rate/token limit reached — wait a moment and try again. (${msg})`);
+            }
+          } else {
+            throw new Error(`Groq rate/token limit reached — wait a moment and try again. (${msg})`);
+          }
+        } else {
+          const msg = data?.error?.message || `Request failed (${res.status})`;
+          throw new Error(msg);
+        }
+      }
+      const message = data?.choices?.[0]?.message;
+      // Reasoning-capable Groq models (GPT-OSS 120B/20B, Qwen 3.6) have a
+      // documented Groq-side bug where, even with reasoning_format set to
+      // "hidden", the model's actual answer can end up entirely in a
+      // separate reasoning/reasoning_content field, leaving message.content
+      // empty. Rather than hard-failing the moment content is blank, fall
+      // back to whichever reasoning field is populated so the student still
+      // gets an answer instead of an opaque "No text returned" error.
+      let text = message?.content || message?.reasoning || message?.reasoning_content;
+      if (!text || !text.trim()) {
+        const finishReason = data?.choices?.[0]?.finish_reason;
+        throw new Error(finishReason ? `No text returned by the model (finish_reason: ${finishReason}). Try again, or switch model in Settings.` : 'No text returned by the model. Try again, or switch model in Settings.');
+      }
+      text = stripThinkTags(text);
+
+      if (groqNeedsArrayUnwrap) {
+        // Unwrap {"items": [...]} back into a bare array string so call
+        // sites get the same shape back regardless of provider.
+        try {
+          const cleaned = text.replace(/```json|```/g, '').trim();
+          const parsed = JSON.parse(cleaned);
+          if (parsed && Array.isArray(parsed.items)) {
+            text = JSON.stringify(parsed.items);
+          }
+          // If the model ignored the wrapper instruction and returned a bare
+          // array anyway, leave `text` as-is — the call site's own
+          // JSON.parse will still handle it correctly.
+        } catch (_) {
+          // Not parseable as the wrapper shape — fall through and let the
+          // call site's own parsing/error-handling deal with it.
+        }
+      }
+
+      logRequest('groq');
       return {text};
+    }
+
+    // Defensive backstop: some reasoning models leak their chain-of-thought as
+    // a <think>...</think> block inline in message.content even when
+    // reasoning_format is set to hidden. Strip it so the tutor's raw internal
+    // monologue never gets rendered as if it were speaking to the student.
+    function stripThinkTags(text) {
+      return text.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
     }
 
     // Navigation
     const tabDeckBtn = document.getElementById('tabDeckBtn');
     const tabMakerBtn = document.getElementById('tabMakerBtn');
     const tabSocraticBtn = document.getElementById('tabSocraticBtn');
+    const tabGwaBtn = document.getElementById('tabGwaBtn');
     const deckView = document.getElementById('deckView');
     const makerView = document.getElementById('makerView');
     const socraticView = document.getElementById('socraticView');
+    const gwaView = document.getElementById('gwaView');
     const landingScreen = document.getElementById('landingScreen');
 
     const NAV_MAP = [
       {tab: tabDeckBtn, view: deckView},
       {tab: tabMakerBtn, view: makerView},
-      {tab: tabSocraticBtn, view: socraticView}
+      {tab: tabSocraticBtn, view: socraticView},
+      {tab: tabGwaBtn, view: gwaView}
     ];
 
     function switchToView(targetView) {
@@ -2408,6 +2888,7 @@
     tabDeckBtn.addEventListener('click', () => switchToView(deckView));
     tabMakerBtn.addEventListener('click', () => switchToView(makerView));
     tabSocraticBtn.addEventListener('click', () => switchToView(socraticView));
+    tabGwaBtn.addEventListener('click', () => switchToView(gwaView));
 
     document.getElementById('backToMenuBtn').addEventListener('click', () => {
       landingScreen.style.display = 'flex';
@@ -2416,6 +2897,7 @@
     document.getElementById('landingFlashcardBtn').addEventListener('click', () => switchToView(deckView));
     document.getElementById('landingMakerBtn').addEventListener('click', () => switchToView(makerView));
     document.getElementById('landingSocraticBtn').addEventListener('click', () => switchToView(socraticView));
+    document.getElementById('landingGwaBtn').addEventListener('click', () => switchToView(gwaView));
 
     // Deck Logic
     let cards = loadCards();
@@ -2759,6 +3241,12 @@
        correct one closely enough — not exact-match, but not fully
        lenient either. Returns { correct, feedback }. */
     async function gradeAnswer(question, correctAnswer, userAnswer) {
+      // Skip the network entirely if this exact question+correct-answer+student-answer
+      // combo was already graded before (retrying a submission, duplicate flashcards,
+      // recovering from an earlier error) — reuses the prior verdict for free.
+      const cached = getCachedGrade(question, correctAnswer, userAnswer);
+      if (cached) return cached;
+
       const prompt =
         `You are grading a flashcard answer. The CORRECT ANSWER may bundle together a
 core idea plus supporting details (examples, exact syntax, specific commands,
@@ -2816,16 +3304,131 @@ Respond with ONLY a JSON object like:
 
       const jsonText = text.replace(/```json|```/g, '').trim();
       const parsed = JSON.parse(jsonText);
-      return {
+      const grade = {
         correct: parsed.correct === true,
         feedback: parsed.feedback || ''
       };
+      setCachedGrade(question, correctAnswer, userAnswer, grade);
+      return grade;
+    }
+
+    /* Grades a whole set of exam/quiz answers concurrently instead of one-by-one.
+       Multiple-choice questions are checked instantly with no AI call at all;
+       only free-response/identification answers need a model call, and those all
+       fire at once via Promise.all instead of waiting in a queue — this is what
+       makes "Submit" feel instant instead of taking one AI round-trip per question. */
+    async function gradeAnswersInParallel(items, getQ, getAnswerKey, getUserAnswer, getType) {
+      const gradingPromises = items.map(async (item) => {
+        const userAnswer = getUserAnswer(item);
+        const type = getType ? getType(item) : 'identification';
+        const answerKey = getAnswerKey(item);
+
+        if (!userAnswer) {
+          return {item, correct: false, feedback: 'No answer given.', userAnswer: ''};
+        }
+        if (type === 'mc') {
+          const isCorrect = userAnswer === answerKey;
+          return {item, correct: isCorrect, feedback: isCorrect ? 'Correct choice.' : '', userAnswer};
+        }
+        try {
+          const grade = await gradeAnswer(getQ(item), answerKey, userAnswer);
+          return {item, correct: grade.correct, feedback: grade.feedback, userAnswer};
+        } catch (err) {
+          return {item, correct: false, feedback: 'Could not grade this one — try reviewing it manually.', userAnswer};
+        }
+      });
+      return Promise.all(gradingPromises);
+    }
+
+    /* One extra AI call after grading is done: looks at the whole set of results
+       together (not just each answer in isolation) and returns a short weak-points
+       / what-to-focus-on summary in plain HTML (paragraphs + a bullet list). */
+    async function getWeakPointsFeedback(resultsSummary) {
+      const prompt = `You just finished grading a student's quiz/exam. Here are all the
+questions with whether the student got them right, and their answer:
+
+${resultsSummary}
+
+Write brief, encouraging but honest feedback for the student in 2 short parts:
+1. One short paragraph (2-3 sentences) on their overall performance and any pattern you notice in what they're missing (e.g. a specific topic, mixing up two concepts, calculation slips, vague answers, etc). If they got everything right, say so warmly and briefly.
+2. A bullet list of 2-4 concrete things to focus on studying next, based specifically on what they got wrong. Be specific to their mistakes, not generic study advice. Skip this list entirely if they got everything right.
+
+Respond with ONLY valid HTML using just <p> and <ul><li> tags, no markdown, no code fences, no extra commentary outside those tags.`;
+
+      const result = await callAI({
+        contents: [{role: 'user', parts: [{text: prompt}]}],
+        temperature: 0.3,
+        maxTokens: 1500
+      });
+      return result.text.replace(/```html|```/g, '').trim();
+    }
+
+    /* Shared by both exam-results screens (flashcard-deck exam + quiz/exam maker):
+       shows the feedback panel in a loading state immediately, then fills it in
+       once the AI call resolves. Fails quietly (panel just hides) so a feedback
+       hiccup never blocks the student from seeing their graded results, which are
+       already on screen by the time this runs. */
+    /* Shared results screen for BOTH quiz modes (deck flashcard quiz and the
+       mock quiz/exam maker's quiz). Takes a plain array of
+       {q, correctAnswer, userAnswer, correct} and shows score, an AI
+       weak-points/focus-areas panel (same helper the exam screens already
+       use), and a per-question review list. */
+    function showQuizResultsScreen(title, items) {
+      document.getElementById('quizResultsTitle').textContent = (title || 'QUIZ RESULTS').toUpperCase();
+
+      const right = items.filter(r => r.correct).length;
+      const pct = items.length ? Math.round((right / items.length) * 100) : 0;
+      document.getElementById('quizResultsScoreBanner').textContent = `${right} / ${items.length} correct (${pct}%)`;
+
+      loadExamWeakPointsFeedback(
+        document.getElementById('quizResultsFeedbackPanel'),
+        document.getElementById('quizResultsFeedbackBody'),
+        items.map((r, i) => `Q${i + 1}: ${r.q}\nCorrect answer: ${r.correctAnswer}\nStudent answer: ${r.userAnswer || '(blank)'}\nResult: ${r.correct ? 'CORRECT' : 'INCORRECT'}`).join('\n\n')
+      );
+
+      const listEl = document.getElementById('quizResultsList');
+      listEl.innerHTML = '';
+      items.forEach((r, i) => {
+        const block = document.createElement('div');
+        block.className = 'exam-result-block ' + (r.correct ? 'right' : 'wrong');
+        block.innerHTML = `
+          <div class="tag" style="font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:0.08em; color:var(--ink-soft);">QUESTION ${i + 1} — ${r.correct ? 'CORRECT' : 'INCORRECT'}</div>
+          <div class="q-text" style="font-size:14px; margin:6px 0;">${escapeHtml(r.q)}</div>
+          <div class="verdict-line">Your answer: ${escapeHtml(r.userAnswer || '(blank)')}</div>
+          <div class="verdict-line">Correct answer: ${escapeHtml(r.correctAnswer)}</div>
+        `;
+        listEl.appendChild(block);
+      });
+
+      document.getElementById('quizResultsOverlay').classList.add('open');
+    }
+
+    document.getElementById('closeQuizResultsBtn').addEventListener('click', () => {
+      document.getElementById('quizResultsOverlay').classList.remove('open');
+    });
+    document.getElementById('quizResultsCloseBtn').addEventListener('click', () => {
+      document.getElementById('quizResultsOverlay').classList.remove('open');
+    });
+
+    async function loadExamWeakPointsFeedback(panelEl, bodyEl, resultsSummary) {
+      panelEl.style.display = 'block';
+      panelEl.classList.add('loading');
+      bodyEl.innerHTML = '<p>Looking over your answers…</p>';
+      try {
+        const html = await getWeakPointsFeedback(resultsSummary);
+        panelEl.classList.remove('loading');
+        bodyEl.innerHTML = html;
+      } catch (err) {
+        console.error('Weak-points feedback failed:', err);
+        panelEl.style.display = 'none';
+      }
     }
 
     // ---------- QUIZ MODE ENGINE ----------
     let quizCards = [];
     let quizIndex = 0;
     let quizResults = {};
+    let quizAnswerLog = {};
     let quizCurrentOptions = [];
     const quizOverlay = document.getElementById('quizOverlay');
     const quizDeckTitle = document.getElementById('quizDeckTitle');
@@ -2843,6 +3446,7 @@ Respond with ONLY a JSON object like:
 
       quizIndex = 0;
       quizResults = {};
+      quizAnswerLog = {};
       updateQuizScore();
       quizDeckTitle.textContent = (deckNames[batchId] || 'Untitled Deck').toUpperCase();
       quizOverlay.classList.add('open');
@@ -2883,6 +3487,7 @@ Respond with ONLY a JSON object like:
         btn.addEventListener('click', () => {
           const isCorrect = optionText === card.a;
           quizResults[card.id] = isCorrect ? 'right' : 'wrong';
+          quizAnswerLog[card.id] = {q: card.q, correctAnswer: card.a, userAnswer: optionText, correct: isCorrect};
           updateQuizScore();
 
           document.querySelectorAll('.quiz-option-btn').forEach(b => {
@@ -2904,9 +3509,9 @@ Respond with ONLY a JSON object like:
         quizIndex++;
         await loadQuizQuestion();
       } else {
-        quizVerdict.textContent = `Quiz complete! ${quizScore.textContent}`;
-        quizVerdict.className = 'study-verdict pending';
-        quizNextBtn.disabled = true;
+        quizOverlay.classList.remove('open');
+        const items = quizCards.map(c => quizAnswerLog[c.id] || {q: c.q, correctAnswer: c.a, userAnswer: '(skipped)', correct: false});
+        showQuizResultsScreen(quizDeckTitle.textContent, items);
       }
     });
 
@@ -3042,20 +3647,17 @@ Respond with ONLY a JSON object like:
       const answerMap = {};
       inputs.forEach(i => {answerMap[i.dataset.cardId] = i.value.trim();});
 
-      const results = [];
-      for (const card of examCards) {
-        const userAnswer = answerMap[card.id] || '';
-        if (!userAnswer) {
-          results.push({card, correct: false, feedback: 'No answer given.'});
-          continue;
-        }
-        try {
-          const grade = await gradeAnswer(card.q, card.a, userAnswer);
-          results.push({card, correct: grade.correct, feedback: grade.feedback, userAnswer});
-        } catch (err) {
-          results.push({card, correct: false, feedback: 'Could not grade this one — try reviewing it manually.', userAnswer});
-        }
-      }
+      // All free-response answers are graded concurrently (Promise.all inside
+      // gradeAnswersInParallel) instead of one AI call at a time — much faster
+      // for exams with several open-ended questions.
+      const graded = await gradeAnswersInParallel(
+        examCards,
+        card => card.q,
+        card => card.a,
+        card => answerMap[card.id] || '',
+        () => 'identification'
+      );
+      const results = graded.map(g => ({card: g.item, correct: g.correct, feedback: g.feedback, userAnswer: g.userAnswer}));
 
       showExamResults(results);
       examSubmitBtn.disabled = false;
@@ -3069,6 +3671,12 @@ Respond with ONLY a JSON object like:
       const right = results.filter(r => r.correct).length;
       const pct = Math.round((right / results.length) * 100);
       examScoreBanner.textContent = `${right} / ${results.length} correct (${pct}%)`;
+
+      loadExamWeakPointsFeedback(
+        document.getElementById('examFeedbackPanel'),
+        document.getElementById('examFeedbackBody'),
+        results.map((r, i) => `Q${i + 1}: ${r.card.q}\nCorrect answer: ${r.card.a}\nStudent answer: ${r.userAnswer || '(blank)'}\nResult: ${r.correct ? 'CORRECT' : 'INCORRECT'}`).join('\n\n')
+      );
 
       examResultsList.innerHTML = '';
       results.forEach((r, i) => {
@@ -3115,21 +3723,56 @@ Respond with ONLY a JSON object like:
       }
     });
 
-    // Flashcard Generator
-    async function generateFlashcards(textareaEl, btnEl) {
-      const text = textareaEl.value.trim();
-      if (!text || !getKey()) {openSettings(); return;}
+    // Splits long input into chunks that stay safely within a single
+    // generation's token budget (especially Groq's free-tier clamp for
+    // openai/gpt-oss-120b, currently 4096 output tokens). ~6000 characters
+    // per chunk leaves comfortable headroom for a full card set plus JSON
+    // overhead without risking mid-generation cutoff. Splits on paragraph
+    // boundaries where possible so a chunk never cuts a thought in half;
+    // falls back to a hard slice only if a single paragraph itself exceeds
+    // the chunk size.
+    function chunkNotesText(text, maxChunkChars = 6000) {
+      if (text.length <= maxChunkChars) return [text];
 
-      const originalLabel = btnEl.textContent;
-      btnEl.textContent = "Generating...";
-      btnEl.disabled = true;
+      const paragraphs = text.split(/\n\s*\n/);
+      const chunks = [];
+      let current = '';
 
-      try {
-        const flashcardPrompt = `You are creating a COMPLETE flashcard set from the notes below. Your goal is full coverage — nothing important or "good to know" should be left out.
+      for (const para of paragraphs) {
+        const candidate = current ? current + '\n\n' + para : para;
+        if (candidate.length <= maxChunkChars) {
+          current = candidate;
+        } else {
+          if (current) chunks.push(current);
+          if (para.length > maxChunkChars) {
+            // A single paragraph is itself too long — hard-slice it.
+            for (let i = 0; i < para.length; i += maxChunkChars) {
+              chunks.push(para.slice(i, i + maxChunkChars));
+            }
+            current = '';
+          } else {
+            current = para;
+          }
+        }
+      }
+      if (current) chunks.push(current);
+      return chunks;
+    }
+
+    // Runs one flashcard-generation call for a single chunk of text and
+    // returns {cards, title, wasTruncated}. Pulled out of generateFlashcards
+    // so both the single-chunk and multi-chunk paths share identical
+    // parsing/recovery logic.
+    async function generateFlashcardsForChunk(chunkText, isTopicRequest) {
+      const flashcardPrompt = `You are creating a COMPLETE flashcard set based on the text below. Your goal is full coverage — nothing important or "good to know" should be left out.
+
+The text below may be either (a) actual notes/content to extract facts from, or (b) a short request naming a topic or subject (e.g. "make flashcards about X"). Either way, produce a full flashcard set:
+- If it's actual notes/content, extract facts directly from it per the instructions below.
+- If it's a topic request rather than notes, generate a complete, accurate flashcard set on that topic using your own knowledge, as if a subject-matter expert had written thorough notes on it. Do not return an empty result just because no notes were pasted in — a named topic is enough to work from.
 
 Instructions:
-1. Read through the entire notes text carefully, section by section.
-2. Extract EVERY distinct fact worth remembering, including:
+1. Read through the entire input carefully, section by section.
+2. Extract or generate EVERY distinct fact worth remembering, including:
    - Core definitions and key terms
    - Formulas, equations, and how/when to use them
    - Processes, steps, or sequences (break multi-step processes into one card per step if that aids recall)
@@ -3138,51 +3781,146 @@ Instructions:
    - Examples that illustrate a concept (if the example itself is worth remembering)
    - Secondary details, exceptions, caveats, or "good to know" asides — do not skip these just because they seem minor. Give them their own cards rather than folding them into a bigger card.
 3. Do not summarize multiple distinct facts into a single vague card. Prefer more atomic cards over fewer broad ones — if in doubt, split into two cards rather than merge.
-4. Do not invent, assume, or add information that is not present in or directly implied by the notes.
+4. If working from actual notes, do not invent, assume, or add information that is not present in or directly implied by the notes.
 5. Word each question so it can stand alone without needing to see the notes.
-6. Cover the notes completely from start to finish — do not stop early or trail off partway through if the notes are long.
+6. Cover the material completely from start to finish — do not stop early or trail off partway through if it is long.
 
-Return ONLY a JSON array, no other text, with exactly two properties per object: "q" (question) and "a" (answer).
+Return ONLY a JSON object with exactly two properties:
+- "title": a short, descriptive deck title (3-6 words) summarizing what this flashcard set covers, based on the topic or notes given.
+- "cards": a JSON array where each object has exactly two properties, "q" (question) and "a" (answer).
 
-Notes:
-${text}`;
+Never return an empty cards array — always produce at least a solid handful of cards.
 
-        const {text: rawText} = await callAI({
-          contents: [{role: 'user', parts: [{text: flashcardPrompt}]}],
-          temperature: 0.4,
-          maxTokens: 65536
-        });
+Text:
+${chunkText}`;
 
-        const jsonText = rawText.replace(/```json|```/g, '').trim();
+      const {text: rawText} = await callAI({
+        contents: [{role: 'user', parts: [{text: flashcardPrompt}]}],
+        temperature: 0.4,
+        // 16384 is comfortably above what any single chunk (~6000 chars)
+        // should need for its card set. callAI still silently clamps this
+        // down further for Groq's openai/gpt-oss-120b free-tier TPM limit —
+        // chunking keeps each individual request's actual needs well under
+        // even that lower clamp, which is the real fix for truncation.
+        maxTokens: 16384,
+        jsonSchema: {
+          type: 'OBJECT',
+          properties: {
+            title: {type: 'STRING'},
+            cards: {
+              type: 'ARRAY',
+              items: {
+                type: 'OBJECT',
+                properties: {
+                  q: {type: 'STRING'},
+                  a: {type: 'STRING'}
+                },
+                required: ['q', 'a']
+              }
+            }
+          },
+          required: ['title', 'cards']
+        }
+      });
 
-        let parsedCards;
-        let wasTruncated = false;
-        try {
-          parsedCards = JSON.parse(jsonText);
-        } catch (parseErr) {
-          // Response likely got cut off mid-object. Try to salvage every
-          // complete {"q":...,"a":...} object that appears before the break.
-          const recovered = [];
-          const objRegex = /\{\s*"q"\s*:\s*"(?:[^"\\]|\\.)*"\s*,\s*"a"\s*:\s*"(?:[^"\\]|\\.)*"\s*\}/g;
-          let match;
-          while ((match = objRegex.exec(jsonText)) !== null) {
-            try {recovered.push(JSON.parse(match[0]));} catch (_) { /* skip malformed */}
-          }
+      const jsonText = rawText.replace(/```json|```/g, '').trim();
 
-          if (recovered.length > 0) {
-            parsedCards = recovered;
-            wasTruncated = true;
+      let parsedCards;
+      let deckTitle = null;
+      let wasTruncated = false;
+      try {
+        const parsed = JSON.parse(jsonText);
+        parsedCards = parsed.cards;
+        deckTitle = typeof parsed.title === 'string' ? parsed.title.trim() : null;
+      } catch (parseErr) {
+        // Response likely got cut off mid-object. Try to salvage every
+        // complete {"q":...,"a":...} object that appears before the break,
+        // and separately try to recover the title if it appears intact
+        // (it comes first in the object, so it usually survives even when
+        // the cards array gets cut off partway through).
+        const recovered = [];
+        const objRegex = /\{\s*"q"\s*:\s*"(?:[^"\\]|\\.)*"\s*,\s*"a"\s*:\s*"(?:[^"\\]|\\.)*"\s*\}/g;
+        let match;
+        while ((match = objRegex.exec(jsonText)) !== null) {
+          try {recovered.push(JSON.parse(match[0]));} catch (_) { /* skip malformed */}
+        }
+        const titleMatch = jsonText.match(/"title"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+        if (titleMatch) deckTitle = titleMatch[1];
+
+        if (recovered.length > 0) {
+          parsedCards = recovered;
+          wasTruncated = true;
+        } else if (!jsonText.startsWith('{') && !jsonText.startsWith('[')) {
+          // The model responded with plain text instead of JSON (e.g. a
+          // clarifying question or a refusal). Surface that text directly
+          // since it's more actionable than a generic parse error.
+          throw new Error(`The model responded with a message instead of flashcards: "${jsonText.slice(0, 200)}"${jsonText.length > 200 ? '…' : ''} Try adding more detail to your notes, or try again.`);
+        } else {
+          throw new Error('Model did not return valid JSON: ' + parseErr.message);
+        }
+      }
+
+      if (!Array.isArray(parsedCards)) parsedCards = [];
+      return {cards: parsedCards, title: deckTitle, wasTruncated};
+    }
+
+    // Flashcard Generator
+    async function generateFlashcards(textareaEl, btnEl) {
+      const text = textareaEl.value.trim();
+      if (!text || !getKey()) {openSettings(); return;}
+
+      const originalLabel = btnEl.textContent;
+      btnEl.disabled = true;
+
+      try {
+        const chunks = chunkNotesText(text);
+        const isTopicRequest = chunks.length === 1 && text.length < 300;
+
+        let allCards = [];
+        let deckTitle = null;
+        let anyTruncated = false;
+
+        for (let i = 0; i < chunks.length; i++) {
+          if (chunks.length > 1) {
+            btnEl.textContent = `Generating (${i + 1}/${chunks.length})...`;
           } else {
-            throw new Error('Model did not return valid JSON: ' + parseErr.message);
+            btnEl.textContent = "Generating...";
           }
+
+          // Groq's TPM limit is a rolling window across recent calls, so
+          // firing chunks back-to-back can accumulate past 8000 TPM even
+          // though each individual chunk fits its own token budget. A short
+          // proactive pause between chunks (only needed for this specific
+          // free-tier-constrained model) spreads requests out.
+          if (i > 0 && getProvider() === 'groq' && getModel() === 'openai/gpt-oss-120b') {
+            btnEl.textContent = `Pausing for rate limits (${i + 1}/${chunks.length})...`;
+            await new Promise(resolve => setTimeout(resolve, 4000));
+          }
+
+          const result = await generateFlashcardsForChunk(chunks[i], isTopicRequest);
+          allCards = allCards.concat(result.cards);
+          if (!deckTitle && result.title) deckTitle = result.title;
+          if (result.wasTruncated) anyTruncated = true;
         }
 
-        // Setup new batch ID
+        if (allCards.length === 0) {
+          // Without this check, an empty result (valid JSON!) sailed
+          // straight past every error check above: JSON.parse succeeds,
+          // newCards becomes [], the spread is a no-op, and the deck gets
+          // created with zero cards — textarea cleared, nothing visibly
+          // wrong, but no cards ever show up. Bail out before touching the
+          // textarea or creating a deck at all.
+          throw new Error('The model didn\'t generate any cards from that input. Try rephrasing your request or pasting in actual notes/content to work from.');
+        }
+
+        // Setup new batch ID, named after what the user asked for instead of
+        // a generic "New Deck" placeholder. Falls back to a trimmed slice of
+        // the user's own input if the model didn't return a usable title.
         const batchId = 'deck_' + Date.now();
-        deckNames[batchId] = 'New Deck';
+        deckNames[batchId] = deckTitle || (text.length > 40 ? text.slice(0, 40).trim() + '…' : text);
         saveDeckNames();
 
-        const newCards = parsedCards.map(c => ({
+        const newCards = allCards.map(c => ({
           id: crypto.randomUUID(),
           batchId: batchId,
           q: c.q,
@@ -3195,8 +3933,8 @@ ${text}`;
         document.getElementById('newDeckPanel').style.display = 'none';
         renderDeck();
 
-        if (wasTruncated) {
-          alert(`Heads up: the response was cut off before finishing. Recovered ${newCards.length} complete card(s), but some cards near the end of your notes may be missing. Try again, or split your notes into smaller chunks for full coverage.`);
+        if (anyTruncated) {
+          alert(`Heads up: one or more chunks got cut off before finishing. Recovered ${newCards.length} complete card(s) total, but some cards may be missing. Try again if the deck looks incomplete.`);
         }
       } catch (e) {
         console.error('Flashcard generation error:', e);
@@ -3228,6 +3966,7 @@ ${text}`;
     const socraticImageInput = document.getElementById('socraticImageInput');
     const socraticImageName = document.getElementById('socraticImageName');
     let socraticImageBase64 = null;
+    let socraticImageLoading = false;
     let tutorChats = JSON.parse(localStorage.getItem("tutorChats") || "[]");
     let currentChatId = null;
 
@@ -3327,17 +4066,50 @@ ${text}`;
 
     socraticImageInput.addEventListener('change', () => {
       const file = socraticImageInput.files[0];
-      if (file) {
-        socraticImageName.textContent = `Attached: ${file.name}`;
-        const reader = new FileReader();
-        reader.onload = () => {socraticImageBase64 = reader.result.split(',')[1];};
-        reader.readAsDataURL(file);
+      if (!file) return;
+
+      if (getProvider() === 'groq' && !GROQ_VISION_MODELS.includes(getModel())) {
+        alert('The selected Groq model doesn\'t support images. Switch to "Qwen 3.6 27B" in Settings first, or attach on Gemini instead.');
+        socraticImageInput.value = '';
+        return;
       }
+
+      socraticImageName.textContent = `Attaching: ${file.name}…`;
+      socraticImageLoading = true;
+      const reader = new FileReader();
+      reader.onload = () => {
+        socraticImageBase64 = reader.result.split(',')[1];
+        socraticImageLoading = false;
+        socraticImageName.textContent = `Attached: ${file.name}`;
+      };
+      reader.onerror = () => {
+        socraticImageLoading = false;
+        socraticImageBase64 = null;
+        socraticImageName.textContent = '';
+        alert(`Couldn't read the image "${file.name}" — please try attaching it again.`);
+      };
+      reader.readAsDataURL(file);
     });
 
     async function sendSocraticMessage(userText) {
-      if (!userText.trim() && !socraticImageBase64) return;
+      if (!userText.trim() && !socraticImageBase64 && !socraticImageLoading) return;
       if (!getKey()) {openSettings(); return;}
+
+      // If an image was just attached, the FileReader may not have finished
+      // yet (readAsDataURL is async). Sending immediately used to silently
+      // drop the image — the request would go out as text-only and the tutor
+      // would say it can't see any photo, with no indication anything went
+      // wrong. Wait briefly for the read to finish instead of racing past it.
+      if (socraticImageLoading) {
+        const waitStart = Date.now();
+        while (socraticImageLoading && Date.now() - waitStart < 8000) {
+          await new Promise(r => setTimeout(r, 100));
+        }
+        if (socraticImageLoading) {
+          alert('The image is still loading — please wait a moment and try sending again.');
+          return;
+        }
+      }
 
       appendChatBubble('user', userText);
       socraticInput.value = '';
@@ -3365,7 +4137,7 @@ ${text}`;
 
       saveTutorChats();
 
-      const systemInstruction = "You are a patient Socratic Math & Science tutor. Guide the student step-by-step using targeted questions. Do NOT reveal complete solutions immediately unless asked to verify final answers. Use standard LaTeX formatting for all mathematical expressions. Wrap inline math in single dollar signs, for example: $\frac{1}{2}$ Wrap larger equations in double dollar signs: $$x^2+5x+6=0$$Do not wrap normal English text in LaTeX.";
+      const systemInstruction = "You are a patient Socratic Math & Science tutor. Guide the student step-by-step using targeted questions. Do NOT reveal complete solutions immediately unless asked to verify final answers. Use standard LaTeX formatting for all mathematical expressions: wrap inline math in single dollar signs, for example $\\frac{1}{2}$, and wrap larger equations in double dollar signs, for example $$x^2+5x+6=0$$. Always leave a space before and after each $ or $$ delimiter so it doesn't run into surrounding words. Never wrap normal English words (like \"or\", \"and\", \"is\") inside math mode without \\text{}, e.g. write $R_1 \\text{ or } R_2$, not $R1ororR2$. Once you introduce a subscripted variable like $R_1$ or $R_2$, keep using that exact LaTeX form (with the underscore and $ delimiters) every time you refer to it later in the same response — never drop back to plain text like R1 or R2 partway through. Every single-letter set or variable name (A, B, x, y, etc.) must always be wrapped in its own $...$, e.g. write \"a function from $A$ to $B$\", never \"a function from AA to BB\" or any other unwrapped or doubled form. Proofread your own response before sending it: never repeat the same word, phrase, or sentence twice in a row. If the student asks you to teach or explain everything on a page/photo covering multiple concepts, do NOT try to deeply explain every concept in one huge reply. Instead, briefly list the concepts you see (one line each) and ask which one they want to start with, then go step-by-step from there. Do not wrap normal English text in LaTeX at all when plain prose reads just as well.";
 
       try {
         const {text: aiReply} = await callAI({
@@ -3381,6 +4153,15 @@ ${text}`;
         saveTutorChats();
 
         appendChatBubble('tutor', aiReply);
+
+        // Give a heads-up before the budget runs out, not just after — so a
+        // student mid-conversation isn't blindsided by the next message failing.
+        if (getProvider() === 'gemini') {
+          const remaining = getRemainingGeminiRequests();
+          if (remaining === 5 || remaining === 1) {
+            appendChatBubble('tutor', `Heads up — you have ${remaining} free Gemini request${remaining === 1 ? '' : 's'} left today. You can switch to Groq in Settings if you'd like to keep going without waiting.`);
+          }
+        }
       } catch (e) {
         console.error('Socratic tutor error:', e);
         appendChatBubble('tutor', `An error occurred while connecting to the AI tutor: ${e.message || 'unknown error'}`);
@@ -3413,37 +4194,161 @@ ${text}`;
       });
     }
 
+    // ---------- Shared markdown -> HTML formatter for AI chat bubbles ----------
+    // Handles GFM-style pipe tables (which the old regex chain had no concept of
+    // and would mangle into raw "| a | b |" text via the bullet/newline rules),
+    // plus the existing heading/bold/italic/hr/blockquote conveniences.
+
+    // Defensive backstop for model slips inside math delimiters that prompt
+    // instructions alone don't reliably prevent:
+    //   1. A subscripted variable introduced correctly ($R_1$) but later
+    //      referred to as plain $R1$ with no underscore.
+    //   2. Words glued directly onto variable tokens with no \text{} or
+    //      spacing at all, e.g. $R1ororR2$ (even doubled connectors like
+    //      "R1" + "or" + "or" + "R2" resolve in one pass).
+    // Scoped strictly to content between $...$/$$...$$ delimiters so normal
+    // prose (including real doubled-letter words/acronyms) is never touched.
+    function normalizeMathGarbage(text) {
+      const CONNECTORS = ['or', 'and', 'nor', 'not', 'is'];
+      const connectorPattern = CONNECTORS.join('|');
+      const glueRe = new RegExp(`([A-Za-z])(\\d+)((?:(?:${connectorPattern}))+)([A-Za-z])(\\d+)`, 'i');
+
+      let out = text.replace(/(\${1,2})([^\$]+?)\1/g, (whole, delim, inner) => {
+        let fixed = inner;
+
+        // Rebuild glued "LetterDigitConnectorLetterDigit" runs first, since
+        // they contain no word boundary for the plain subscript fix to find.
+        if (/[A-Za-z]\d+[a-z]/.test(fixed)) {
+          let prev;
+          do {
+            prev = fixed;
+            fixed = fixed.replace(glueRe, (m, l1, d1, glue, l2, d2) => {
+              const connectorMatch = glue.toLowerCase().match(new RegExp(connectorPattern));
+              const word = connectorMatch ? connectorMatch[0] : 'or';
+              return `${l1}_${d1} \\text{ ${word} } ${l2}_${d2}`;
+            });
+          } while (fixed !== prev && /[A-Za-z]\d+[a-z]/.test(fixed));
+        }
+
+        // Then subscript any remaining cleanly-separated bare tokens, e.g.
+        // "$R1$ or $R2$" -> "$R_1$ or $R_2$".
+        fixed = fixed.replace(/\b([A-Za-z])(\d+)\b(?!_)/g, '$1_$2');
+
+        return delim + fixed + delim;
+      });
+
+      return out;
+    }
+
+    function formatMarkdown(rawText) {
+      rawText = normalizeMathGarbage(rawText);
+      // Split into blocks on blank lines so we can detect a contiguous run of
+      // "| ... |" lines (a table) and handle it separately from prose.
+      const lines = rawText.replace(/\r\n/g, '\n').split('\n');
+      const isTableRow = (line) => /^\s*\|.*\|\s*$/.test(line);
+      const isSeparatorRow = (line) => /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)+\|?\s*$/.test(line);
+
+      const splitRow = (line) =>
+        line.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map(cell => cell.trim());
+
+      const renderInline = (str) => {
+        // Bold, italics, inline formatting applied within a single cell/line.
+        let out = str;
+        out = out.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        out = out.replace(/\*(?!\*)(.*?)\*(?!\*)/g, '<em>$1</em>');
+        out = out.replace(/_(?!_)(.*?)_(?!_)/g, '<em>$1</em>');
+        return out;
+      };
+
+      const htmlParts = [];
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+
+        // Detect a markdown table: a row of pipes, immediately followed by a
+        // "---|---|---" separator row, then zero or more further pipe rows.
+        if (isTableRow(line) && isSeparatorRow(lines[i + 1] || '')) {
+          const headerCells = splitRow(line).map(c => renderInline(escapeHtml(c)));
+          let j = i + 2;
+          const bodyRows = [];
+          while (j < lines.length && isTableRow(lines[j])) {
+            bodyRows.push(splitRow(lines[j]).map(c => renderInline(escapeHtml(c))));
+            j++;
+          }
+
+          let tableHtml = '<div class="md-table-wrap"><table class="md-table"><thead><tr>';
+          headerCells.forEach(c => { tableHtml += `<th>${c}</th>`; });
+          tableHtml += '</tr></thead><tbody>';
+          bodyRows.forEach(row => {
+            tableHtml += '<tr>';
+            row.forEach(c => { tableHtml += `<td>${c}</td>`; });
+            tableHtml += '</tr>';
+          });
+          tableHtml += '</tbody></table></div>';
+
+          htmlParts.push(tableHtml);
+          i = j - 1; // skip past the consumed table lines
+          continue;
+        }
+
+        htmlParts.push(line);
+      }
+
+      let formattedText = htmlParts.join('\n');
+
+      // Protect math delimiter regions ($...$ / $$...$$) from the later
+      // underscore-italics rule below. LaTeX subscripts like $R_1$ use the
+      // same underscore character as markdown's _italic_ syntax, so without
+      // this the italics regex greedily pairs an underscore in one $...$
+      // block with the next one anywhere later in the message and mangles
+      // both (e.g. "$R_1$ ... $R_2$" becoming "$R<em>1$ ... $R</em>2$").
+      const mathPlaceholders = [];
+      formattedText = formattedText.replace(/\${1,2}[^\$]+?\${1,2}/g, (match) => {
+        mathPlaceholders.push(match);
+        return `\u0000MATH${mathPlaceholders.length - 1}\u0000`;
+      });
+
+      // 1. Horizontal Rules (*** or ---)
+      formattedText = formattedText.replace(/^\s*(\*\*\*|---)\s*$/gm, '<hr style="border: 0; border-top: 1px solid var(--border); margin: 12px 0;">');
+
+      // 2. Headings (### Text, ## Text, # Text)
+      formattedText = formattedText.replace(/^###\s+(.*)$/gm, '<strong style="font-size: 1.1em; display: block; margin-top: 8px;">$1</strong>');
+      formattedText = formattedText.replace(/^##\s+(.*)$/gm, '<strong style="font-size: 1.2em; display: block; margin-top: 10px;">$1</strong>');
+      formattedText = formattedText.replace(/^#\s+(.*)$/gm, '<strong style="font-size: 1.3em; display: block; margin-top: 12px;">$1</strong>');
+
+      // 3. Bullet points (* item or - item)
+      formattedText = formattedText.replace(/^\s*[\*\-]\s+(.*)$/gm, '&bull; $1');
+
+      // 4. Bold (**text**)
+      formattedText = formattedText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+      // 5. Italics (*text* or _text_)
+      formattedText = formattedText.replace(/\*(?!\*)(.*?)\*(?!\*)/g, '<em>$1</em>');
+      formattedText = formattedText.replace(/_(?!_)(.*?)_(?!_)/g, '<em>$1</em>');
+
+      // 6. Blockquotes (> text) - just in case the AI uses them!
+      formattedText = formattedText.replace(/^\s*>\s+(.*)$/gm, '<span style="display: block; border-left: 3px solid var(--accent); padding-left: 10px; margin: 8px 0; color: var(--ink-soft);">$1</span>');
+
+      // 7. Convert remaining newlines to HTML line breaks (tables already have
+      // their own block structure, so this only affects prose lines).
+      formattedText = formattedText.replace(/\n/g, '<br>');
+
+      // Restore protected math regions now that the markdown passes (which
+      // would have corrupted underscores/asterisks inside them) are done.
+      formattedText = formattedText.replace(/\u0000MATH(\d+)\u0000/g, (m, idx) => mathPlaceholders[Number(idx)]);
+
+      // The table-wrap divs are block-level; drop any stray <br> immediately
+      // touching them so we don't get extra gaps above/below each table.
+      formattedText = formattedText.replace(/(<br>\s*)+(<div class="md-table-wrap">)/g, '$2');
+      formattedText = formattedText.replace(/(<\/div>)(\s*<br>)+/g, '$1');
+
+      return formattedText;
+    }
+
     function appendChatBubble(role, text) {
       const row = document.createElement('div');
       row.className = `msg-row ${role}`;
 
-      let formattedText = role === 'user' ? escapeHtml(text) : text;
-      
-      if (role === 'tutor') {
-        // 1. Horizontal Rules (*** or ---)
-        formattedText = formattedText.replace(/^\s*(\*\*\*|---)\s*$/gm, '<hr style="border: 0; border-top: 1px solid var(--border); margin: 12px 0;">');
-
-        // 2. Headings (### Text, ## Text, # Text)
-        formattedText = formattedText.replace(/^###\s+(.*)$/gm, '<strong style="font-size: 1.1em; display: block; margin-top: 8px;">$1</strong>');
-        formattedText = formattedText.replace(/^##\s+(.*)$/gm, '<strong style="font-size: 1.2em; display: block; margin-top: 10px;">$1</strong>');
-        formattedText = formattedText.replace(/^#\s+(.*)$/gm, '<strong style="font-size: 1.3em; display: block; margin-top: 12px;">$1</strong>');
-
-        // 3. Bullet points (* item or - item)
-        formattedText = formattedText.replace(/^\s*[\*\-]\s+(.*)$/gm, '&bull; $1');
-
-        // 4. Bold (**text**)
-        formattedText = formattedText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-
-        // 5. Italics (*text* or _text_)
-        formattedText = formattedText.replace(/\*(?!\*)(.*?)\*(?!\*)/g, '<em>$1</em>');
-        formattedText = formattedText.replace(/_(?!_)(.*?)_(?!_)/g, '<em>$1</em>');
-        
-        // 6. Blockquotes (> text) - just in case the AI uses them!
-        formattedText = formattedText.replace(/^\s*>\s+(.*)$/gm, '<span style="display: block; border-left: 3px solid var(--accent); padding-left: 10px; margin: 8px 0; color: var(--ink-soft);">$1</span>');
-
-        // 7. Convert newlines to HTML line breaks
-        formattedText = formattedText.replace(/\n/g, '<br>');
-      }
+      const formattedText = role === 'user' ? escapeHtml(text) : formatMarkdown(text);
 
       row.innerHTML = `
     <div class="bubble">
@@ -3462,7 +4367,11 @@ ${text}`;
             {left: "$", right: "$", display: false},
             {left: "\\(", right: "\\)", display: false},
             {left: "\\[", right: "\\]", display: true}
-          ]
+          ],
+          // Malformed LaTeX (e.g. words crammed into math mode without \text{})
+          // should fall back to showing the raw source instead of throwing and
+          // leaving the rest of the bubble unrendered.
+          throwOnError: false
         });
       }
     }
@@ -3591,7 +4500,60 @@ ${text}`;
           hard: 'Push harder: require applying concepts, spotting nuance, or combining more than one idea per question.'
         }[difficulty];
 
-        const prompt = `You are building a ${count}-question mock ${makerFormat === 'exam' ? 'exam' : 'quiz'} for a student.
+        // (Per-batch prompts are built inside the loop below, since large
+        // question counts are now split across multiple calls.)
+
+        if (makerFiles.length && getProvider() === 'groq' && getModel() !== 'qwen/qwen3.6-27b') {
+          throw new Error('The selected Groq model doesn\'t support image/file attachments. Switch to "Qwen 3.6 27B" in Settings, or remove the attached files.');
+        }
+
+        // Split large question counts across multiple calls instead of one
+        // big request. A 50-question set (each with a question, hint, and
+        // up to 4 options) generates a lot of JSON — easily enough to hit
+        // the token ceiling mid-string (the exact "Unterminated string in
+        // JSON" error this replaces), especially under Groq's free-tier
+        // clamp. 15 questions per call stays comfortably within budget.
+        const QUESTIONS_PER_CALL = 15;
+        const batches = [];
+        for (let remaining = count; remaining > 0; remaining -= QUESTIONS_PER_CALL) {
+          batches.push(Math.min(QUESTIONS_PER_CALL, remaining));
+        }
+
+        const questionSchema = {
+          type: 'OBJECT',
+          properties: {
+            type: {type: 'STRING'},
+            q: {type: 'STRING'},
+            options: {type: 'ARRAY', items: {type: 'STRING'}},
+            answer: {type: 'STRING'},
+            hint: {type: 'STRING'}
+          },
+          required: ['type', 'q', 'answer', 'hint']
+        };
+
+        let allQuestions = [];
+        let anyTruncated = false;
+
+        for (let i = 0; i < batches.length; i++) {
+          const batchCount = batches[i];
+          if (batches.length > 1) {
+            makerLoadingText.textContent = makerFiles.length
+              ? `Reading your material and writing questions (${i + 1}/${batches.length})…`
+              : `Writing questions (${i + 1}/${batches.length})…`;
+          }
+
+          // Groq's TPM limit is a rolling window across recent calls, so
+          // firing batches back-to-back can accumulate past 8000 TPM even
+          // though each individual batch fits its own token budget. A short
+          // proactive pause between batches (only needed for this specific
+          // free-tier-constrained model) spreads requests out instead of
+          // relying entirely on hitting the 429 and retrying after the fact.
+          if (i > 0 && getProvider() === 'groq' && getModel() === 'openai/gpt-oss-120b') {
+            makerLoadingText.textContent = `Pausing briefly for rate limits (${i + 1}/${batches.length})…`;
+            await new Promise(resolve => setTimeout(resolve, 4000));
+          }
+
+          const batchPrompt = `You are building ${batchCount} question(s) for a mock ${makerFormat === 'exam' ? 'exam' : 'quiz'} for a student.
 
 TOPIC / INSTRUCTIONS FROM STUDENT:
 ${topic || '(see attached files for the material to cover)'}
@@ -3608,34 +4570,77 @@ For EVERY question, also write:
 - For "identification" questions: "answer" (the correct answer, as a clear standalone string — no options field).
 
 Make sure every question is directly answerable from the topic/material given — never invent facts not implied by it.
+${batches.length > 1 ? `\nThis is batch ${i + 1} of ${batches.length} for the same overall set — write DIFFERENT questions than a typical first pass would, covering other facts/angles from the material so the full set doesn't repeat itself across batches.` : ''}
 
-Return ONLY a JSON array of objects, no other text, in this exact shape:
-[{"type":"mc","q":"...","options":["...","...","...","..."],"answer":"...","hint":"..."}, {"type":"identification","q":"...","answer":"...","hint":"..."}]`;
+Return ONLY a JSON object with one property, "questions", containing a JSON array of exactly ${batchCount} question object(s) in this shape:
+{"questions": [{"type":"mc","q":"...","options":["...","...","...","..."],"answer":"...","hint":"..."}, {"type":"identification","q":"...","answer":"...","hint":"..."}]}`;
 
-        if (makerFiles.length && getProvider() === 'groq' && getModel() !== 'qwen/qwen3.6-27b') {
-          throw new Error('The selected Groq model doesn\'t support image/file attachments. Switch to "Qwen 3.6 27B" in Settings, or remove the attached files.');
+          const parts = [{text: batchPrompt}];
+          // Only attach files on the first batch — repeating the same
+          // image/PDF bytes on every batch call would multiply upload size
+          // and token cost for no benefit, since the material doesn't change.
+          if (i === 0) {
+            makerFiles.forEach(f => {
+              parts.push({inlineData: {mimeType: f.mimeType, data: f.base64}});
+            });
+          }
+
+          const {text: rawText} = await callAI({
+            contents: [{role: 'user', parts}],
+            temperature: 0.5,
+            // 16384 is comfortably above what a single 15-question batch
+            // needs. callAI still clamps this further for Groq's
+            // openai/gpt-oss-120b free-tier TPM limit — batching keeps each
+            // individual request's actual needs well under even that lower
+            // clamp, which is what actually prevents truncation.
+            maxTokens: 16384,
+            // Enforce JSON at the API level instead of relying purely on the
+            // prompt's "Return ONLY a JSON..." instruction, so a conversational
+            // or refusal response doesn't slip through as unparseable text.
+            jsonSchema: {
+              type: 'OBJECT',
+              properties: {
+                questions: {type: 'ARRAY', items: questionSchema}
+              },
+              required: ['questions']
+            }
+          });
+
+          const jsonText = rawText.replace(/```json|```/g, '').trim();
+          let batchQuestions;
+          try {
+            const parsed = JSON.parse(jsonText);
+            batchQuestions = Array.isArray(parsed.questions) ? parsed.questions : [];
+          } catch (parseErr) {
+            // Response likely got cut off mid-object (e.g. "Unterminated
+            // string in JSON"). Try to salvage every complete question
+            // object that appears before the break instead of losing the
+            // whole batch to one truncated string.
+            const recovered = [];
+            const objRegex = /\{\s*"type"\s*:\s*"(?:mc|identification)"[\s\S]*?"hint"\s*:\s*"(?:[^"\\]|\\.)*"\s*\}/g;
+            let match;
+            while ((match = objRegex.exec(jsonText)) !== null) {
+              try {recovered.push(JSON.parse(match[0]));} catch (_) { /* skip malformed */}
+            }
+
+            if (recovered.length > 0) {
+              batchQuestions = recovered;
+              anyTruncated = true;
+            } else if (!jsonText.startsWith('{') && !jsonText.startsWith('[')) {
+              throw new Error(`The model responded with a message instead of questions: "${jsonText.slice(0, 200)}"${jsonText.length > 200 ? '…' : ''} Try adding more detail to your topic, or try again.`);
+            } else {
+              throw new Error('Model did not return valid JSON: ' + parseErr.message);
+            }
+          }
+
+          allQuestions = allQuestions.concat(batchQuestions);
         }
 
-        const parts = [{text: prompt}];
-        makerFiles.forEach(f => {
-          parts.push({inlineData: {mimeType: f.mimeType, data: f.base64}});
-        });
-
-        const {text: rawText} = await callAI({
-          contents: [{role: 'user', parts}],
-          temperature: 0.5,
-          maxTokens: 65536
-        });
-
-        const jsonText = rawText.replace(/```json|```/g, '').trim();
-        let questions;
-        try {
-          questions = JSON.parse(jsonText);
-        } catch (parseErr) {
-          throw new Error('Model did not return valid JSON: ' + parseErr.message);
+        if (allQuestions.length === 0) {
+          throw new Error('The model didn\'t generate any questions from that input. Try rephrasing your topic, or try again.');
         }
 
-        questions = questions.map(q => ({
+        const questions = allQuestions.map(q => ({
           id: crypto.randomUUID(),
           type: q.type === 'mc' ? 'mc' : 'identification',
           q: q.q,
@@ -3654,6 +4659,10 @@ Return ONLY a JSON array of objects, no other text, in this exact shape:
           startMakerQuiz(makerSet);
         } else {
           startMakerExam(makerSet);
+        }
+
+        if (anyTruncated) {
+          alert(`Heads up: part of the generation got cut off before finishing. Recovered ${questions.length} complete question(s) total, but you may have fewer than the ${count} requested. Try again if you need the full count.`);
         }
       } catch (e) {
         console.error('Mock maker generation error:', e);
@@ -3684,12 +4693,14 @@ Return ONLY a JSON array of objects, no other text, in this exact shape:
     let makerQuizQuestions = [];
     let makerQuizIndex = 0;
     let makerQuizResults = {};
+    let makerQuizAnswerLog = {};
     let makerQuizAnswered = false;
 
     function startMakerQuiz(set) {
       makerQuizQuestions = set.questions;
       makerQuizIndex = 0;
       makerQuizResults = {};
+      makerQuizAnswerLog = {};
       makerQuizTitle.textContent = set.title.toUpperCase();
       makerQuizOverlay.classList.add('open');
       showFloatTutorFab(true);
@@ -3740,6 +4751,7 @@ Return ONLY a JSON array of objects, no other text, in this exact shape:
 
       const isCorrect = optionText === q.answer;
       makerQuizResults[q.id] = isCorrect ? 'right' : 'wrong';
+      makerQuizAnswerLog[q.id] = {q: q.q, correctAnswer: q.answer, userAnswer: optionText, correct: isCorrect};
 
       [...makerQuizOptions.children].forEach(b => {
         b.disabled = true;
@@ -3772,6 +4784,7 @@ Return ONLY a JSON array of objects, no other text, in this exact shape:
         makerQuizAnswered = true;
         makerQuizIdInput.disabled = true;
         makerQuizResults[q.id] = grade.correct ? 'right' : 'wrong';
+        makerQuizAnswerLog[q.id] = {q: q.q, correctAnswer: q.answer, userAnswer, correct: grade.correct};
 
         makerQuizVerdict.textContent = grade.correct
           ? `✓ Correct! ${grade.feedback}`
@@ -3810,8 +4823,8 @@ Return ONLY a JSON array of objects, no other text, in this exact shape:
       } else {
         makerQuizOverlay.classList.remove('open');
         showFloatTutorFab(false);
-        const right = Object.values(makerQuizResults).filter(r => r === 'right').length;
-        alert(`Quiz complete! You got ${right} / ${makerQuizQuestions.length} correct.`);
+        const items = makerQuizQuestions.map(q => makerQuizAnswerLog[q.id] || {q: q.q, correctAnswer: q.answer, userAnswer: '(skipped)', correct: false});
+        showQuizResultsScreen(makerQuizTitle.textContent, items);
       }
     });
 
@@ -3947,25 +4960,17 @@ Return ONLY a JSON array of objects, no other text, in this exact shape:
       const answerMap = {};
       allInputs.forEach(i => {answerMap[i.dataset.cardId] = i.value.trim();});
 
-      const results = [];
-      for (const q of makerExamQuestions) {
-        const userAnswer = answerMap[q.id] || '';
-        if (!userAnswer) {
-          results.push({q, correct: false, feedback: 'No answer given.', userAnswer: ''});
-          continue;
-        }
-        if (q.type === 'mc') {
-          const isCorrect = userAnswer === q.answer;
-          results.push({q, correct: isCorrect, feedback: isCorrect ? 'Correct choice.' : '', userAnswer});
-        } else {
-          try {
-            const grade = await gradeAnswer(q.q, q.answer, userAnswer);
-            results.push({q, correct: grade.correct, feedback: grade.feedback, userAnswer});
-          } catch (err) {
-            results.push({q, correct: false, feedback: 'Could not grade this one — try reviewing it manually.', userAnswer});
-          }
-        }
-      }
+      // MC questions are graded instantly (no AI call), and every free-response
+      // question is graded concurrently instead of sequentially — the whole exam
+      // now takes about as long as the single slowest question, not the sum of all.
+      const graded = await gradeAnswersInParallel(
+        makerExamQuestions,
+        q => q.q,
+        q => q.answer,
+        q => answerMap[q.id] || '',
+        q => q.type
+      );
+      const results = graded.map(g => ({q: g.item, correct: g.correct, feedback: g.feedback, userAnswer: g.userAnswer}));
 
       showMakerExamResults(results);
       makerExamSubmitBtn.disabled = false;
@@ -3979,6 +4984,12 @@ Return ONLY a JSON array of objects, no other text, in this exact shape:
       const right = results.filter(r => r.correct).length;
       const pct = Math.round((right / results.length) * 100);
       makerExamScoreBanner.textContent = `${right} / ${results.length} correct (${pct}%)`;
+
+      loadExamWeakPointsFeedback(
+        document.getElementById('makerExamFeedbackPanel'),
+        document.getElementById('makerExamFeedbackBody'),
+        results.map((r, i) => `Q${i + 1}: ${r.q.q}\nCorrect answer: ${r.q.answer}\nStudent answer: ${r.userAnswer || '(blank)'}\nResult: ${r.correct ? 'CORRECT' : 'INCORRECT'}`).join('\n\n')
+      );
 
       makerExamResultsList.innerHTML = '';
       results.forEach((r, i) => {
@@ -4037,10 +5048,11 @@ Return ONLY a JSON array of objects, no other text, in this exact shape:
     function appendSideTutorBubble(role, text) {
       const row = document.createElement('div');
       row.className = `msg-row ${role}`;
+      const formattedText = role === 'user' ? escapeHtml(text) : formatMarkdown(text);
       row.innerHTML = `
         <div class="bubble">
           ${role === 'tutor' ? '<span class="tutor-label">SOCRATIC TUTOR</span>' : ''}
-          <p>${role === 'user' ? escapeHtml(text) : text}</p>
+          <p>${formattedText}</p>
         </div>
       `;
       sideTutorChat.appendChild(row);
@@ -4052,7 +5064,11 @@ Return ONLY a JSON array of objects, no other text, in this exact shape:
             {left: "$", right: "$", display: false},
             {left: "\\(", right: "\\)", display: false},
             {left: "\\[", right: "\\]", display: true}
-          ]
+          ],
+          // Malformed LaTeX (e.g. words crammed into math mode without \text{})
+          // should fall back to showing the raw source instead of throwing and
+          // leaving the rest of the bubble unrendered.
+          throwOnError: false
         });
       }
     }
@@ -4066,7 +5082,7 @@ Return ONLY a JSON array of objects, no other text, in this exact shape:
       sideTutorInput.value = '';
       sideTutorHistory.push({role: 'user', parts: [{text}]});
 
-      const systemInstruction = "You are a patient Socratic tutor helping a student with a specific quiz/exam question. Guide them step-by-step using targeted questions. Do NOT reveal the final answer outright unless they explicitly ask you to just confirm it after real effort. Use standard LaTeX for math: wrap inline math in single dollar signs like $\\frac{1}{2}$, and larger equations in double dollar signs like $$x^2+5x+6=0$$. Do not wrap normal English text in LaTeX.";
+      const systemInstruction = "You are a patient Socratic tutor helping a student with a specific quiz/exam question. Guide them step-by-step using targeted questions. Do NOT reveal the final answer outright unless they explicitly ask you to just confirm it after real effort. Use standard LaTeX for math: wrap inline math in single dollar signs like $\\frac{1}{2}$, and larger equations in double dollar signs like $$x^2+5x+6=0$$. Always leave a space before and after each $ or $$ delimiter. Never wrap normal English words (like \"or\", \"and\", \"is\") inside math mode without \\text{}, e.g. write $R_1 \\text{ or } R_2$, not $R1ororR2$. Once you introduce a subscripted variable like $R_1$ or $R_2$, keep using that exact LaTeX form every time you refer to it later in the same response — never drop back to plain text like R1 or R2 partway through. Every single-letter set or variable name (A, B, x, y, etc.) must always be wrapped in its own $...$, e.g. write \"a function from $A$ to $B$\", never \"a function from AA to BB\" or any other unwrapped or doubled form. Proofread your own response before sending it: never repeat the same word, phrase, or sentence twice in a row. If the student asks you to teach or explain everything on a page/photo covering multiple concepts, do NOT try to deeply explain every concept in one huge reply. Instead, briefly list the concepts you see (one line each) and ask which one they want to start with, then go step-by-step from there. Do not wrap normal English text in LaTeX at all when plain prose reads just as well.";
 
       try {
         const {text: aiReply} = await callAI({
@@ -4075,8 +5091,16 @@ Return ONLY a JSON array of objects, no other text, in this exact shape:
         });
         sideTutorHistory.push({role: 'model', parts: [{text: aiReply}]});
         appendSideTutorBubble('tutor', aiReply);
+
+        if (getProvider() === 'gemini') {
+          const remaining = getRemainingGeminiRequests();
+          if (remaining === 5 || remaining === 1) {
+            appendSideTutorBubble('tutor', `Heads up — you have ${remaining} free Gemini request${remaining === 1 ? '' : 's'} left today. You can switch to Groq in Settings if you'd like to keep going without waiting.`);
+          }
+        }
       } catch (e) {
-        appendSideTutorBubble('tutor', 'An error occurred while connecting to the tutor.');
+        console.error('Side tutor error:', e);
+        appendSideTutorBubble('tutor', `An error occurred while connecting to the AI tutor: ${e.message || 'unknown error'}`);
       }
     }
 
@@ -4105,6 +5129,10 @@ Return ONLY a JSON array of objects, no other text, in this exact shape:
       document.getElementById('apiKeyInputGroq').value = localStorage.getItem(LS_GROQ_KEY) || '';
       document.getElementById('groqModelSelect').value = localStorage.getItem(LS_GROQ_MODEL) || 'openai/gpt-oss-120b';
       updateSettingsFieldVisibility();
+      const remaining = getRemainingGeminiRequests();
+      const quotaNote = document.getElementById('geminiQuotaNote');
+      quotaNote.textContent = `${remaining} / ${GEMINI_FREE_DAILY_LIMIT} free requests left today (resets at midnight, your device's clock).`;
+      quotaNote.style.color = remaining <= 5 ? 'var(--danger)' : 'var(--ink-soft)';
       settingsOverlay.classList.add('open');
     }
 
@@ -4119,6 +5147,145 @@ Return ONLY a JSON array of objects, no other text, in this exact shape:
       localStorage.setItem(LS_GROQ_MODEL, document.getElementById('groqModelSelect').value);
       settingsOverlay.classList.remove('open');
     });
+
+    // ---------- GWA CALCULATOR (Philippine 1.00–5.00 scale) ----------
+    // Standard PH grade values — a select/dropdown per subject rather than
+    // free-text, since these are the only values that exist on this scale
+    // (there's no such thing as a 1.10 or 2.60 at most PH universities).
+    const GWA_GRADE_OPTIONS = [
+      {value: '1.00', label: '1.00 — Excellent'},
+      {value: '1.25', label: '1.25 — Outstanding'},
+      {value: '1.50', label: '1.50 — Superior'},
+      {value: '1.75', label: '1.75 — Very Good'},
+      {value: '2.00', label: '2.00 — Good'},
+      {value: '2.25', label: '2.25 — Satisfactory'},
+      {value: '2.50', label: '2.50 — Fairly Satisfactory'},
+      {value: '2.75', label: '2.75 — Fair'},
+      {value: '3.00', label: '3.00 — Passing'},
+      {value: '5.00', label: '5.00 — Failed'}
+    ];
+
+    let gwaRowCount = 0;
+    const gwaRowsEl = document.getElementById('gwaRows');
+
+    function addGwaRow(prefill) {
+      gwaRowCount++;
+      const rowId = 'gwaRow' + gwaRowCount;
+      const row = document.createElement('div');
+      row.className = 'maker-row';
+      row.id = rowId;
+      row.style.cssText = 'display:grid; grid-template-columns: 1fr 1fr 80px 90px auto; gap:10px; align-items:end; margin-bottom:10px;';
+
+      const gradeOptionsHtml = GWA_GRADE_OPTIONS.map(g =>
+        `<option value="${g.value}"${prefill && prefill.grade === g.value ? ' selected' : ''}>${g.label}</option>`
+      ).join('');
+
+      row.innerHTML = `
+        <div class="maker-field" style="margin:0;">
+          <label>Subject (optional)</label>
+          <input type="text" class="gwa-subject-input" placeholder="e.g. Mathematics" value="${prefill ? escapeHtml(prefill.subject || '') : ''}">
+        </div>
+        <div class="maker-field" style="margin:0;">
+          <label>Grade</label>
+          <select class="gwa-grade-select">${gradeOptionsHtml}</select>
+        </div>
+        <div class="maker-field" style="margin:0;">
+          <label>Units</label>
+          <input type="number" class="gwa-units-input" min="0" step="0.5" value="${prefill ? prefill.units : 3}">
+        </div>
+        <div class="maker-field" style="margin:0;">
+          <label style="font-size:11px;">Exclude?</label>
+          <input type="checkbox" class="gwa-exclude-checkbox" style="width:20px; height:20px; margin-top:4px;">
+        </div>
+        <button type="button" class="icon-btn gwa-remove-row-btn" title="Remove subject" style="margin-bottom:2px;">✕</button>
+      `;
+
+      row.querySelector('.gwa-remove-row-btn').addEventListener('click', () => {
+        row.remove();
+      });
+
+      gwaRowsEl.appendChild(row);
+    }
+
+    document.getElementById('gwaAddRowBtn').addEventListener('click', () => addGwaRow());
+
+    function calculateGwa() {
+      const rows = [...gwaRowsEl.querySelectorAll('.maker-row')];
+      const excludeChecked = document.getElementById('gwaExcludeToggle').checked;
+
+      let totalGradeUnits = 0;
+      let totalUnits = 0;
+      let anyRow = false;
+      let anyExcluded = false;
+
+      rows.forEach(row => {
+        const grade = parseFloat(row.querySelector('.gwa-grade-select').value);
+        const units = parseFloat(row.querySelector('.gwa-units-input').value);
+        const isExcluded = row.querySelector('.gwa-exclude-checkbox').checked;
+
+        if (isNaN(grade) || isNaN(units) || units <= 0) return;
+        anyRow = true;
+
+        if (excludeChecked && isExcluded) {
+          anyExcluded = true;
+          return;
+        }
+
+        totalGradeUnits += grade * units;
+        totalUnits += units;
+      });
+
+      const resultBox = document.getElementById('gwaResultBox');
+      const banner = document.getElementById('gwaResultBanner');
+      const detail = document.getElementById('gwaResultDetail');
+
+      if (!anyRow || totalUnits === 0) {
+        resultBox.style.display = 'block';
+        banner.textContent = 'Add at least one subject with valid units to calculate.';
+        detail.textContent = '';
+        return;
+      }
+
+      const gwa = totalGradeUnits / totalUnits;
+      // Standard rounding to 2 decimal places, matching how GWA is normally
+      // reported on a Transcript of Records. Some registrars round
+      // differently (e.g. truncation, or rounding to the nearest official
+      // grade value) — this is the common convention, not a universal rule.
+      const gwaRounded = Math.round(gwa * 100) / 100;
+
+      let remark;
+      if (gwaRounded <= 1.00) remark = 'Excellent';
+      else if (gwaRounded <= 1.45) remark = 'Outstanding';
+      else if (gwaRounded <= 1.70) remark = 'Superior';
+      else if (gwaRounded <= 1.95) remark = 'Very Good';
+      else if (gwaRounded <= 2.20) remark = 'Good';
+      else if (gwaRounded <= 2.45) remark = 'Satisfactory';
+      else if (gwaRounded <= 2.70) remark = 'Fairly Satisfactory';
+      else if (gwaRounded <= 2.95) remark = 'Fair';
+      else if (gwaRounded <= 3.00) remark = 'Passing';
+      else remark = 'Failed';
+
+      resultBox.style.display = 'block';
+      banner.textContent = `GWA: ${gwaRounded.toFixed(2)} (${remark})`;
+      detail.textContent = `Based on ${totalUnits} total unit(s) across ${rows.filter(r => !isNaN(parseFloat(r.querySelector('.gwa-units-input').value))).length} subject(s).` +
+        (anyExcluded ? ' Some subjects were excluded per your settings above.' : '') +
+        ' Rounding and exclusion policies (e.g. for PE/NSTP) vary by school — check your registrar for your institution\'s exact rule.';
+    }
+
+    document.getElementById('gwaCalculateBtn').addEventListener('click', calculateGwa);
+
+    document.getElementById('gwaResetBtn').addEventListener('click', () => {
+      if (gwaRowsEl.children.length && !confirm('Clear all subjects and start over?')) return;
+      gwaRowsEl.innerHTML = '';
+      document.getElementById('gwaExcludeToggle').checked = false;
+      document.getElementById('gwaResultBox').style.display = 'none';
+      addGwaRow();
+      addGwaRow();
+    });
+
+    // Seed with two starter rows so the calculator isn't empty on first open.
+    addGwaRow();
+    addGwaRow();
 
     // Init App
     renderDeck();
