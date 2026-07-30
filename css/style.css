@@ -1,4 +1,5 @@
-    /*
+
+/*
       Base variable values live here as a fallback only.
       The actual active palette is supplied by css/themes.css via
       [data-theme="..."] blocks on <html>, which override every
@@ -317,7 +318,9 @@
     }
 
     .folder-rename-btn,
-    .folder-delete-btn {
+    .folder-delete-btn,
+    .folder-history-btn,
+    .folder-export-btn {
       width: 30px;
       height: 30px;
       border: none;
@@ -330,11 +333,116 @@
       cursor: pointer;
       transition: all .15s ease;
       opacity: 0;
+      font-size: 13px;
     }
 
     .folder-card:hover .folder-rename-btn,
-    .folder-card:hover .folder-delete-btn {
+    .folder-card:hover .folder-delete-btn,
+    .folder-card:hover .folder-history-btn,
+    .folder-card:hover .folder-export-btn {
       opacity: 1;
+    }
+
+    .folder-history-btn:hover,
+    .folder-export-btn:hover {
+      color: var(--ink);
+      background: var(--bg-alt);
+    }
+
+    /* ---------- Score trend strip (deck folder card) ---------- */
+    .score-trend-strip {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 2px 0;
+    }
+
+    .score-sparkline {
+      display: block;
+      flex-shrink: 0;
+    }
+
+    .score-trend-badge {
+      font-size: 11px;
+      font-weight: 500;
+      padding: 3px 7px;
+      border-radius: 20px;
+      background: var(--bg-alt);
+      color: var(--ink-soft);
+      white-space: nowrap;
+    }
+
+    .score-trend-badge.up {
+      color: var(--teal);
+      background: rgba(79, 169, 140, 0.12);
+    }
+
+    .score-trend-badge.down {
+      color: var(--danger);
+      background: rgba(193, 89, 75, 0.12);
+    }
+
+    .score-trend-badge.new {
+      color: var(--accent);
+      background: rgba(216, 164, 56, 0.12);
+    }
+
+    /* ---------- Score History modal ---------- */
+    .score-history-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .score-history-row:last-child {
+      border-bottom: none;
+    }
+
+    .score-history-row-main {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .score-history-subject {
+      font-size: 13.5px;
+      color: var(--ink);
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 280px;
+    }
+
+    .score-history-mode {
+      font-size: 11.5px;
+      color: var(--ink-soft);
+    }
+
+    .score-history-row-side {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 2px;
+      flex-shrink: 0;
+    }
+
+    .score-history-pct {
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .score-history-pct.good { color: var(--teal); }
+    .score-history-pct.mid { color: var(--accent); }
+    .score-history-pct.low { color: var(--danger); }
+
+    .score-history-date {
+      font-size: 10.5px;
+      color: var(--ink-soft);
     }
 
     .folder-delete-btn:hover {
@@ -2899,6 +3007,65 @@
       }
     }
 
+    /* ---------- Planner ↔ Deck/Notes link picker ---------- */
+    .planner-link-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      max-height: 220px;
+      overflow-y: auto;
+    }
+
+    .planner-link-option {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      text-align: left;
+      background: transparent;
+      border: none;
+      border-radius: 7px;
+      padding: 8px 9px;
+      font-size: 12.5px;
+      color: var(--ink);
+      cursor: pointer;
+      transition: background 0.12s ease;
+    }
+
+    .planner-link-option:hover {
+      background: var(--bg-alt);
+    }
+
+    .planner-link-option span:last-child {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .planner-card-link-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      align-self: flex-start;
+      background: var(--bg-alt);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 4px 10px;
+      font-size: 11.5px;
+      color: var(--ink);
+      cursor: pointer;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      transition: border-color 0.15s ease, color 0.15s ease;
+    }
+
+    .planner-card-link-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
     /* ==================== Watch & Note ==================== */
 
     .watch-editor-main {
@@ -3113,6 +3280,225 @@
       .watch-editor-panes {
         grid-template-columns: 1fr;
         grid-template-rows: 240px 1fr;
+      }
+    }
+
+    /* ==================== Storage Usage Readout (Settings) ==================== */
+
+    .storage-usage-block {
+      margin-top: 10px;
+    }
+
+    .storage-usage-bar-track {
+      width: 100%;
+      height: 8px;
+      border-radius: 100px;
+      background: var(--border);
+      overflow: hidden;
+    }
+
+    .storage-usage-bar-fill {
+      height: 100%;
+      border-radius: 100px;
+      background: var(--accent);
+      transition: width 0.25s ease, background 0.25s ease;
+    }
+
+    .storage-usage-bar-fill.warn {
+      background: var(--danger);
+    }
+
+    /* ==================== Storage Full Banner ==================== */
+
+    .storage-full-banner {
+      position: sticky;
+      top: 0;
+      z-index: 9998;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      background: var(--danger);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 500;
+      padding: 10px 20px;
+      text-align: center;
+    }
+
+    .storage-full-dismiss {
+      flex-shrink: 0;
+      background: none;
+      border: none;
+      color: #fff;
+      opacity: 0.85;
+      cursor: pointer;
+      font-size: 14px;
+      padding: 2px 6px;
+    }
+
+    .storage-full-dismiss:hover {
+      opacity: 1;
+    }
+
+    @media (max-width: 640px) {
+      .storage-full-banner {
+        flex-direction: column;
+        gap: 6px;
+        padding: 10px 14px;
+      }
+    }
+
+    /* ==================== Undo Toast ==================== */
+
+    .undo-toast-container {
+      position: fixed;
+      left: 50%;
+      bottom: 24px;
+      transform: translateX(-50%);
+      z-index: 9999;
+      display: flex;
+      flex-direction: column-reverse;
+      gap: 8px;
+      pointer-events: none;
+    }
+
+    .undo-toast {
+      pointer-events: auto;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      background: var(--ink);
+      color: var(--bg);
+      border-radius: 10px;
+      padding: 12px 16px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity 0.18s ease, transform 0.18s ease;
+      max-width: 90vw;
+    }
+
+    .undo-toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .undo-toast-msg {
+      font-size: 13.5px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .undo-toast-btn {
+      flex-shrink: 0;
+      background: none;
+      border: none;
+      color: var(--accent);
+      font-weight: 700;
+      font-size: 13.5px;
+      cursor: pointer;
+      padding: 2px 4px;
+    }
+
+    .undo-toast-btn:hover {
+      text-decoration: underline;
+    }
+
+    @media (max-width: 640px) {
+      .undo-toast {
+        max-width: calc(100vw - 32px);
+      }
+      .undo-toast-msg {
+        white-space: normal;
+      }
+    }
+
+    /* ==================== Due Today Widget (landing screen) ==================== */
+
+    .due-today-widget {
+      max-width: 900px;
+      margin: 0 auto 18px;
+      background: var(--panel);
+      border: 1px solid var(--accent);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+    }
+
+    .due-today-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .due-today-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--ink);
+    }
+
+    .due-today-icon {
+      font-size: 18px;
+      line-height: 1;
+    }
+
+    .due-today-decks {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-top: 12px;
+    }
+
+    .due-today-deck-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 8px 12px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+    }
+
+    .due-today-deck-name {
+      font-size: 13.5px;
+      color: var(--ink);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .due-today-deck-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .due-today-deck-count {
+      font-size: 12.5px;
+      color: var(--ink-soft);
+      white-space: nowrap;
+    }
+
+    .btn-sm {
+      padding: 6px 12px;
+      font-size: 12.5px;
+    }
+
+    @media (max-width: 640px) {
+      .due-today-header {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .due-today-header .btn {
+        width: 100%;
       }
     }
 

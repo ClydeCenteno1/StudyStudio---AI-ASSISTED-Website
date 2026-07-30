@@ -1,3 +1,4 @@
+
 // ============================================================
 // StudyStudio — Notes
 // A lightweight markdown+LaTeX note editor. Notes list on the
@@ -25,8 +26,7 @@ function loadNotes() {
   catch { return []; }
 }
 function saveNotes() {
-  try { localStorage.setItem(LS_NOTES, JSON.stringify(notes)); }
-  catch (e) { console.error('Failed to save notes:', e); }
+  safeSetItem(LS_NOTES, JSON.stringify(notes));
 }
 
 function getCurrentNote() {
@@ -54,15 +54,20 @@ function createNote() {
   return note;
 }
 
+// Deletes instantly (no blocking confirm dialog) but offers a 6s
+// "Undo" toast — restores the note back to its original position in
+// the list rather than just re-appending it, so undo doesn't reorder
+// anything else. See showUndoToast() in utils.js for the pattern.
 function deleteNote(noteId) {
-  const note = notes.find(n => n.id === noteId);
-  if (!note) return;
-  if (!confirm(`Delete "${note.title || 'Untitled note'}"? This can't be undone.`)) return;
+  const noteIndex = notes.findIndex(n => n.id === noteId);
+  if (noteIndex === -1) return;
+  const note = notes[noteIndex];
+  const wasCurrentNote = currentNoteId === noteId;
 
   notes = notes.filter(n => n.id !== noteId);
   saveNotes();
 
-  if (currentNoteId === noteId) {
+  if (wasCurrentNote) {
     currentNoteId = notes.length ? notes[0].id : null;
   }
   renderNotesList();
@@ -71,6 +76,14 @@ function deleteNote(noteId) {
   } else {
     showNotesEmptyEditor();
   }
+
+  showUndoToast(`Deleted "${note.title || 'Untitled note'}"`, () => {
+    notes.splice(noteIndex, 0, note); // restore at original position
+    saveNotes();
+    currentNoteId = note.id;
+    renderNotesList();
+    loadNoteIntoEditor(note.id);
+  });
 }
 
 // ---------- List rendering ----------
@@ -155,7 +168,7 @@ function loadNoteIntoEditor(noteId) {
 // \underline{} has no Markdown equivalent formatMarkdown understands,
 // so it's swapped for null-byte placeholder tokens here and restored
 // to real <u> tags AFTER formatMarkdown has run (formatMarkdown's own
-// escapeHtml pass would otherwise turn a raw <u> into literal "&lt;u&gt;").
+// escapeHtml pass would otherwise turn a raw <u> into literal "<u>").
 function preprocessLatexTextCommands(text) {
   // Protect math spans first so \textbf{} *inside* $...$ is left for
   // KaTeX to handle natively, rather than being rewritten twice.
@@ -272,6 +285,110 @@ async function turnNoteIntoFlashcards() {
     switchToView(document.getElementById('deckView'));
   }
 }
+
+// ---------- "Scan into Note" — photo/PDF -> a new note via AI ----------
+// Reuses the exact same inlineData-part pattern maker.js uses to send
+// images/PDFs to the AI (see buildMockSet in maker.js) — the model
+// reads the page directly rather than a separate OCR step, so a scan
+// of handwritten or messy notes still comes back as clean, organized
+// Markdown text ready to edit.
+// Mime types Gemini's inline-data image/document understanding actually
+// accepts (per Google's docs). GIF, BMP, TIFF, and similar are NOT
+// supported and previously got sent through anyway, surfacing as an
+// opaque "invalid image data" error straight from the API instead of
+// a clear message before ever making the request.
+const SCAN_SUPPORTED_MIME_TYPES = [
+  'image/png', 'image/jpeg', 'image/webp', 'image/heic', 'image/heif',
+  'application/pdf'
+];
+
+// The Gemini Developer API caps total inline-data request size at 20MB
+// (text + all files combined). Leave headroom for the prompt text and
+// base64's own ~33% size inflation over the raw file bytes.
+const SCAN_MAX_FILE_BYTES = 15 * 1024 * 1024; // 15MB raw file
+
+async function scanFileIntoNote(file) {
+  const statusEl = document.getElementById('scanIntoNoteStatus');
+  const setStatus = (msg, isError) => {
+    statusEl.style.display = msg ? 'block' : 'none';
+    statusEl.textContent = msg;
+    statusEl.style.color = isError ? 'var(--danger)' : 'var(--ink-soft)';
+  };
+
+  if (!getKey()) { openSettings(); return; }
+
+  const isPdf = file.type === 'application/pdf';
+
+  if (!SCAN_SUPPORTED_MIME_TYPES.includes(file.type)) {
+    setStatus(`"${file.type || 'this file type'}" isn't supported for scanning — try a PNG, JPEG, WEBP, HEIC, or PDF instead.`, true);
+    return;
+  }
+  if (file.size > SCAN_MAX_FILE_BYTES) {
+    setStatus(`That file is too large to scan (${Math.round(file.size / 1024 / 1024)}MB) — the limit is ${Math.round(SCAN_MAX_FILE_BYTES / 1024 / 1024)}MB. Try a smaller photo or a lower-resolution scan.`, true);
+    return;
+  }
+  // Any inlineData attachment (image OR PDF) needs a vision-capable Groq
+  // model — this previously only checked images, so a PDF sent to a
+  // non-vision Groq model surfaced Gemini/Groq's own confusing "image
+  // attachments" error instead of this clearer, PDF-aware message.
+  if (getProvider() === 'groq' && !GROQ_VISION_MODELS.includes(getModel())) {
+    setStatus('The selected Groq model doesn\'t support image/PDF attachments — switch to "Qwen 3.6 27B" in Settings first.', true);
+    return;
+  }
+
+  setStatus('Reading the page…', false);
+
+  const reader = new FileReader();
+  reader.onerror = () => setStatus('Couldn\'t read that file — please try again.', true);
+  reader.onload = async () => {
+    const base64 = reader.result.split(',')[1];
+    try {
+      const prompt = `Transcribe the content of this ${isPdf ? 'PDF' : 'photo'} into clean, well-organized study notes in Markdown. Preserve the actual content faithfully (don't summarize or omit material) — just clean up structure: use headings for sections, bullet lists where the source uses them, and standard LaTeX math ($...$ inline, $$...$$ for display equations) for any formulas, exactly as they appear. If handwriting is ambiguous, transcribe your best reading rather than leaving a gap. Do not add commentary, a title line, or wrap the output in code fences — return only the transcribed notes themselves.`;
+
+      const {text} = await callAI({
+        contents: [{
+          role: 'user',
+          parts: [
+            {text: prompt},
+            {inlineData: {mimeType: file.type, data: base64}}
+          ]
+        }],
+        temperature: 0.2,
+        maxTokens: 4096
+      });
+
+      const body = text.replace(/```markdown|```/g, '').trim();
+      if (!body) {
+        setStatus('Couldn\'t make out any content in that file — try a clearer photo/scan.', true);
+        return;
+      }
+
+      const note = createNote();
+      note.title = file.name.replace(/\.[^.]+$/, '') || 'Scanned note';
+      note.body = body;
+      note.updatedAt = new Date().toISOString();
+      saveNotes();
+      renderNotesList();
+      loadNoteIntoEditor(note.id);
+
+      setStatus('', false);
+    } catch (e) {
+      console.error('Scan into note failed:', e);
+      setStatus(`Scan failed: ${e.message || 'unknown error'}`, true);
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+document.getElementById('scanIntoNoteBtn').addEventListener('click', () => {
+  document.getElementById('scanIntoNoteInput').click();
+});
+document.getElementById('scanIntoNoteInput').addEventListener('change', () => {
+  const input = document.getElementById('scanIntoNoteInput');
+  const file = input.files && input.files[0];
+  if (file) scanFileIntoNote(file);
+  input.value = '';
+});
 
 // ---------- Wiring ----------
 document.getElementById('newNoteBtn').addEventListener('click', createNote);

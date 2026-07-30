@@ -1,3 +1,4 @@
+
 // ============================================================
 // StudyStudio — Spaced Repetition (SM-2)
 // Per-card scheduling state (ease factor, interval, due date,
@@ -21,8 +22,7 @@ function loadSrsState() {
   catch { return {}; }
 }
 function saveSrsState(state) {
-  try { localStorage.setItem(LS_SRS_STATE, JSON.stringify(state)); }
-  catch (e) { console.error('Failed to save SRS state:', e); }
+  safeSetItem(LS_SRS_STATE, JSON.stringify(state));
 }
 
 let srsState = loadSrsState();

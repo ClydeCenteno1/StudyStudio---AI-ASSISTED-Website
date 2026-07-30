@@ -1,3 +1,4 @@
+
 // ============================================================
 // StudyStudio — Config
 // Centralized localStorage keys and app-wide constants.
@@ -21,6 +22,7 @@ const LS_PLANNER_TASKS = 'deckflip_planner_tasks';
 const LS_NOTES = 'deckflip_notes';
 const LS_POMODORO_STATE = 'deckflip_pomodoro_state';
 const LS_WATCH_SESSIONS = 'deckflip_watch_sessions';
+const LS_SCORE_HISTORY = 'deckflip_score_history';
 
 // Keys that make up a user's full local dataset. Used by the
 // export/import backup feature in settings.js — keep this in sync
@@ -40,7 +42,8 @@ const BACKUP_KEYS = [
   LS_SRS_STATE,
   LS_PLANNER_TASKS,
   LS_NOTES,
-  LS_WATCH_SESSIONS
+  LS_WATCH_SESSIONS,
+  LS_SCORE_HISTORY
   // Deliberately excludes LS_REQUEST_LOG (a daily quota counter, not
   // user data — importing a stale count would be misleading) and
   // LS_POMODORO_STATE (transient session/timer state, not content

@@ -1,3 +1,4 @@
+
 // ============================================================
 // StudyStudio — Dashboard Strip
 // A glance-able summary shown at the top of the landing screen:
@@ -12,13 +13,81 @@
 // Loaded after all feature modules, before main.js.
 // ============================================================
 
+// ---------- Due Today widget ----------
+// A standalone, per-deck breakdown of SRS-due cards with a one-click
+// "Review now" per deck, plus a "Review all" that launches the same
+// cross-deck '__due__' session the Deck tab's own banner uses. This
+// is deliberately separate from the small stats strip below: due
+// reviews are the single most actionable thing on the landing screen,
+// so they get a prominent widget rather than being just one number
+// among several.
+function renderDueTodayWidget() {
+  const widget = document.getElementById('dueTodayWidget');
+  if (!widget) return;
+
+  try {
+    const allCards = loadCards();
+    if (allCards.length === 0) { widget.style.display = 'none'; return; }
+
+    const names = loadDeckNames();
+    const dueCounts = getDueCountsByBatch(allCards); // {batchId: count}, only due>0 entries
+    const batchIds = Object.keys(dueCounts).filter(id => dueCounts[id] > 0);
+
+    if (batchIds.length === 0) { widget.style.display = 'none'; return; }
+
+    // Sort busiest deck first — that's the one most worth tackling.
+    batchIds.sort((a, b) => dueCounts[b] - dueCounts[a]);
+    const totalDue = batchIds.reduce((sum, id) => sum + dueCounts[id], 0);
+
+    document.getElementById('dueTodayHeadline').textContent =
+      `${totalDue} ${totalDue === 1 ? 'card' : 'cards'} due today across ${batchIds.length} ${batchIds.length === 1 ? 'deck' : 'decks'}`;
+
+    const decksEl = document.getElementById('dueTodayDecks');
+    decksEl.innerHTML = batchIds.map(id => `
+      <div class="due-today-deck-row">
+        <div class="due-today-deck-name">${escapeHtml(names[id] || 'Untitled Deck')}</div>
+        <div class="due-today-deck-right">
+          <span class="due-today-deck-count">${dueCounts[id]} due</span>
+          <button type="button" class="btn btn-ghost btn-sm" data-due-batch="${escapeHtml(id)}">Review</button>
+        </div>
+      </div>
+    `).join('');
+
+    decksEl.querySelectorAll('[data-due-batch]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const batchId = btn.dataset.dueBatch;
+        switchToView(document.getElementById('deckView'));
+        // startStudySession (deck.js) reads the live `cards`/`deckNames`
+        // module state directly, so jumping straight into a per-deck
+        // review here is safe without any extra deck-open step.
+        startStudySession(batchId);
+      });
+    });
+
+    widget.style.display = 'block';
+  } catch (e) {
+    // srs.js/deck.js not ready yet, or no due data — fail closed (hide).
+    widget.style.display = 'none';
+  }
+}
+
+document.getElementById('dueTodayReviewAllBtn')?.addEventListener('click', () => {
+  switchToView(document.getElementById('deckView'));
+  startStudySession('__due__');
+});
+
 function renderDashboard() {
+  renderDueTodayWidget();
+
   const strip = document.getElementById('dashboardStrip');
   if (!strip) return;
 
   const stats = [];
 
   // ---------- Cards due today (across all decks) ----------
+  // (The full per-deck breakdown now lives in the Due Today widget
+  // above; this tile stays as a compact stat among the others when
+  // there's nothing due, or as a quick-glance total when there is.)
   try {
     const allCards = loadCards();
     if (allCards.length > 0) {

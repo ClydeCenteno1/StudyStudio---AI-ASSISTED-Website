@@ -1,3 +1,4 @@
+
 // ============================================================
 // StudyStudio — Watch & Note
 // Paste a YouTube link, watch it, and capture either timestamped
@@ -21,8 +22,7 @@ function loadWatchSessions() {
   catch { return []; }
 }
 function saveWatchSessions() {
-  try { localStorage.setItem(LS_WATCH_SESSIONS, JSON.stringify(watchSessions)); }
-  catch (e) { console.error('Failed to save watch sessions:', e); }
+  safeSetItem(LS_WATCH_SESSIONS, JSON.stringify(watchSessions));
 }
 
 function getCurrentWatchSession() {

@@ -1,3 +1,4 @@
+
 // ============================================================
 // StudyStudio — Schedule Planner
 // A simple 3-column task board (To Do / In Progress / Done) for
@@ -25,8 +26,7 @@
       catch { return []; }
     }
     function savePlannerTasks() {
-      try { localStorage.setItem(LS_PLANNER_TASKS, JSON.stringify(plannerTasks)); }
-      catch (e) { console.error('Failed to save planner tasks:', e); }
+      safeSetItem(LS_PLANNER_TASKS, JSON.stringify(plannerTasks));
     }
 
     const PLANNER_TYPE_ICONS = {
@@ -177,6 +177,30 @@
         `;
       }
 
+      let linkLabel = '';
+      if (task.link && task.link.id) {
+        // Re-resolve the current name for a deck link opportunistically,
+        // so a rename in Deck view is reflected here without needing to
+        // re-link the task — falls back to the snapshot label if the
+        // deck/note can no longer be found (e.g. deleted).
+        let liveLabel = task.link.label;
+        try {
+          if (task.link.type === 'deck') {
+            const names = loadDeckNames();
+            if (names[task.link.id]) liveLabel = names[task.link.id];
+          } else if (task.link.type === 'note') {
+            const note = loadNotes().find(n => n.id === task.link.id);
+            if (note) liveLabel = note.title || 'Untitled note';
+          }
+        } catch (e) { /* deck.js/notes.js not ready — use snapshot label */ }
+
+        linkLabel = `
+          <button type="button" class="planner-card-link-btn" title="Open linked ${task.link.type}">
+            ${task.link.type === 'deck' ? '⚡' : '🗒️'} ${escapeHtml(liveLabel)} →
+          </button>
+        `;
+      }
+
       card.innerHTML = `
         <div class="planner-card-top">
           <span class="planner-card-type">${PLANNER_TYPE_ICONS[task.type] || '📌'} ${PLANNER_TYPE_LABELS[task.type] || 'Other'}</span>
@@ -184,6 +208,7 @@
         </div>
         <div class="planner-card-title">${escapeHtml(task.title)}</div>
         ${dueLabel}
+        ${linkLabel}
         <div class="planner-card-move">
           <select class="planner-status-select">
             <option value="todo"${task.status === 'todo' ? ' selected' : ''}>To Do</option>
@@ -193,11 +218,26 @@
         </div>
       `;
 
+      if (task.link) {
+        card.querySelector('.planner-card-link-btn').addEventListener('click', (e) => {
+          e.stopPropagation();
+          openPlannerTaskLink(task.link);
+        });
+      }
+
       card.querySelector('.planner-card-del').addEventListener('click', () => {
-        if (!confirm(`Delete "${task.title}"?`)) return;
+        const taskIndex = plannerTasks.findIndex(t => t.id === task.id);
+        if (taskIndex === -1) return;
+
         plannerTasks = plannerTasks.filter(t => t.id !== task.id);
         savePlannerTasks();
         renderPlanner();
+
+        showUndoToast(`Deleted "${task.title}"`, () => {
+          plannerTasks.splice(taskIndex, 0, task); // restore at original position
+          savePlannerTasks();
+          renderPlanner();
+        });
       });
 
       card.querySelector('.planner-status-select').addEventListener('change', (e) => {
@@ -348,6 +388,118 @@
 
     plannerUpdateDueTriggerLabel();
 
+    // ---------- Cross-linking: attach a task to a deck or note ----------
+    // A task's link is {type: 'deck'|'note', id, label} — label is a
+    // snapshot of the name/title at link time, so a task card still
+    // shows something sensible even if the deck/note is later renamed
+    // (the id lookup below refreshes the label opportunistically
+    // instead, so renames DO usually flow through on next render).
+    let plannerPendingLink = null; // {type, id, label} | null
+
+    function plannerUpdateLinkTriggerLabel() {
+      const label = document.getElementById('plannerLinkTriggerLabel');
+      const btn = document.getElementById('plannerLinkTriggerBtn');
+      if (!plannerPendingLink) {
+        label.textContent = 'None';
+        btn.classList.remove('has-date');
+        return;
+      }
+      const icon = plannerPendingLink.type === 'deck' ? '⚡' : '🗒️';
+      label.textContent = `${icon} ${plannerPendingLink.label}`;
+      btn.classList.add('has-date');
+    }
+
+    function plannerRenderLinkOptions() {
+      const listEl = document.getElementById('plannerLinkList');
+      listEl.innerHTML = '';
+
+      const options = [];
+      // Decks — reads deck.js's own loadCards/loadDeckNames globals
+      // directly rather than duplicating deck storage logic here.
+      try {
+        const allCards = loadCards();
+        const names = loadDeckNames();
+        const batchIds = [...new Set(allCards.map(c => c.batchId || 'default'))];
+        batchIds.forEach(id => {
+          options.push({type: 'deck', id, label: names[id] || 'Untitled Deck'});
+        });
+      } catch (e) { /* deck.js not ready */ }
+
+      // Notes
+      try {
+        const allNotes = loadNotes();
+        allNotes.forEach(n => {
+          options.push({type: 'note', id: n.id, label: n.title || 'Untitled note'});
+        });
+      } catch (e) { /* notes.js not ready */ }
+
+      if (options.length === 0) {
+        listEl.innerHTML = '<div class="planner-col-empty" style="padding:10px 4px;">No decks or notes yet.</div>';
+        return;
+      }
+
+      options.forEach(opt => {
+        const row = document.createElement('button');
+        row.type = 'button';
+        row.className = 'planner-link-option';
+        row.innerHTML = `<span>${opt.type === 'deck' ? '⚡' : '🗒️'}</span><span>${escapeHtml(opt.label)}</span>`;
+        row.addEventListener('click', () => {
+          plannerPendingLink = opt;
+          plannerUpdateLinkTriggerLabel();
+          closePlannerLinkPopover();
+        });
+        listEl.appendChild(row);
+      });
+    }
+
+    const plannerLinkPopover = document.getElementById('plannerLinkPopover');
+    const plannerLinkTriggerBtn = document.getElementById('plannerLinkTriggerBtn');
+
+    function openPlannerLinkPopover() {
+      plannerRenderLinkOptions();
+      plannerLinkPopover.classList.add('open');
+    }
+    function closePlannerLinkPopover() {
+      plannerLinkPopover.classList.remove('open');
+    }
+
+    plannerLinkTriggerBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      plannerLinkPopover.classList.contains('open') ? closePlannerLinkPopover() : openPlannerLinkPopover();
+    });
+    document.getElementById('plannerLinkClearBtn').addEventListener('click', () => {
+      plannerPendingLink = null;
+      plannerUpdateLinkTriggerLabel();
+      closePlannerLinkPopover();
+    });
+    document.addEventListener('click', (e) => {
+      if (!plannerLinkPopover.classList.contains('open')) return;
+      if (e.target.closest('#plannerLinkPopover') || e.target.closest('#plannerLinkTriggerBtn')) return;
+      closePlannerLinkPopover();
+    });
+
+    // Opens the linked deck (jumps to Deck view, drilled into that
+    // folder) or note (jumps to Notes view, loads that note) from a
+    // task card's "Open" shortcut.
+    function openPlannerTaskLink(link) {
+      if (!link) return;
+      if (link.type === 'deck') {
+        activeBatch = link.id;
+        switchToView(document.getElementById('deckView'));
+        renderDeck();
+      } else if (link.type === 'note') {
+        const noteExists = loadNotes().some(n => n.id === link.id);
+        if (!noteExists) {
+          alert('That note no longer exists — it may have been deleted.');
+          return;
+        }
+        currentNoteId = link.id;
+        switchToView(document.getElementById('notesView'));
+        loadNoteIntoEditor(link.id);
+        renderNotesList();
+      }
+    }
+
     // ---------- Add task ----------
     document.getElementById('plannerAddTaskBtn').addEventListener('click', () => {
       const titleInput = document.getElementById('plannerTaskTitle');
@@ -366,13 +518,16 @@
         type: typeInput.value,
         dueDate: dueInput.value || null, // yyyy-mm-dd or null (no deadline)
         status: 'todo',
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        link: plannerPendingLink // {type, id, label} | null
       });
       savePlannerTasks();
 
       titleInput.value = '';
       dueInput.value = '';
       plannerUpdateDueTriggerLabel();
+      plannerPendingLink = null;
+      plannerUpdateLinkTriggerLabel();
       titleInput.focus();
 
       renderPlanner();

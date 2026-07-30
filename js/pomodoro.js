@@ -1,3 +1,4 @@
+
 // ============================================================
 // StudyStudio — Pomodoro Timer
 // A small floating widget (bottom-right, draggable-free — just
@@ -34,6 +35,11 @@ function loadPomodoroState() {
 }
 
 function savePomodoroState() {
+  // Deliberately NOT safeSetItem: this fires on every timer tick, so
+  // it would spam the visible storage-full banner repeatedly if quota
+  // is exceeded. It's transient session state (see LS_POMODORO_STATE's
+  // exclusion from BACKUP_KEYS in config.js), not content worth
+  // interrupting the user's timer over — just fail quietly.
   try { localStorage.setItem(LS_POMODORO_STATE, JSON.stringify(pomodoroState)); }
   catch (e) { console.error('Failed to save pomodoro state:', e); }
 }

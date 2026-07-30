@@ -1,3 +1,4 @@
+
 // ============================================================
 // StudyStudio — Flashcard Deck
 // Deck rendering, flashcard generation from notes, and the
@@ -11,9 +12,9 @@
     let activeBatch = null;
 
     function loadCards() {try {return JSON.parse(localStorage.getItem(LS_CARDS)) || [];} catch {return [];} }
-    function saveCards() {localStorage.setItem(LS_CARDS, JSON.stringify(cards));}
+    function saveCards() {safeSetItem(LS_CARDS, JSON.stringify(cards));}
     function loadDeckNames() {try {return JSON.parse(localStorage.getItem(LS_DECK_NAMES)) || {};} catch {return {};} }
-    function saveDeckNames() {localStorage.setItem(LS_DECK_NAMES, JSON.stringify(deckNames));}
+    function saveDeckNames() {safeSetItem(LS_DECK_NAMES, JSON.stringify(deckNames));}
 
     const grid = document.getElementById('grid');
     const deckLabel = document.getElementById('deckLabel');
@@ -62,30 +63,51 @@
 
   <div class="folder-count">${batchCards.length} cards${dueInDeck > 0 ? ` · <span class="due-pill">${dueInDeck} due</span>` : ''}</div>
 
+  <div class="score-trend-strip" style="display:none;"></div>
+
   <button class="btn-study-action study-btn">
     ▶ Study Deck
   </button>
 
   <div class="folder-actions">
     <button class="folder-rename-btn" title="Rename">✏️</button>
+    <button class="folder-history-btn" title="Quiz/exam history">📊</button>
+    <button class="folder-export-btn" title="Export deck">⬇️</button>
     <button class="folder-delete-btn" title="Delete Deck">🗑️</button>
   </div>
 `;
 
+          if (typeof renderScoreTrendInto === 'function') {
+            renderScoreTrendInto(folder.querySelector('.score-trend-strip'), batchId);
+          }
+
+          folder.querySelector('.folder-history-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            openScoreHistory(batchId, 'deck');
+          });
+
+          folder.querySelector('.folder-export-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            openExportDeckPicker(batchId);
+          });
+
           folder.querySelector('.folder-delete-btn').addEventListener('click', (e) => {
             e.stopPropagation();
 
-            const confirmed = confirm(
-              `Delete the deck "${title}"?\n\n` +
-              `This will permanently delete all ${batchCards.length} flashcards in this deck.`
-            );
+            // Instant delete + undo toast instead of a blocking confirm().
+            // Snapshot everything needed to fully restore the deck: its
+            // cards (in original order/positions isn't preserved across
+            // the whole `cards` array, but re-appending is fine since
+            // deck folders aren't manually ordered), its name, and any
+            // SRS scheduling state so "Undo" doesn't reset review progress.
+            const deletedCards = cards.filter(c => (c.batchId || 'default') === batchId);
+            const deletedName = deckNames[batchId];
+            const deletedSrsEntries = {};
+            deletedCards.forEach(c => {
+              if (srsState[c.id]) deletedSrsEntries[c.id] = srsState[c.id];
+            });
 
-            if (!confirmed) return;
-
-            // Remove every card in this deck
             cards = cards.filter(c => (c.batchId || 'default') !== batchId);
-
-            // Remove the deck name
             delete deckNames[batchId];
 
             saveCards();
@@ -93,6 +115,16 @@
             pruneSrsState(cards);
 
             renderDeck();
+
+            showUndoToast(`Deleted deck "${title}" (${deletedCards.length} card${deletedCards.length === 1 ? '' : 's'})`, () => {
+              cards = [...cards, ...deletedCards];
+              deckNames[batchId] = deletedName;
+              Object.assign(srsState, deletedSrsEntries);
+              saveCards();
+              saveDeckNames();
+              saveSrsState(srsState);
+              renderDeck();
+            });
           });
 
           // Study button handler
@@ -154,11 +186,12 @@
           el.querySelector('.card-del').addEventListener('click', (e) => {
             e.stopPropagation();
 
-            const confirmed = confirm(
-              `Delete this flashcard?\n\nQuestion:\n${card.q}`
-            );
-
-            if (!confirmed) return;
+            // Instant delete + undo toast. Preserve this card's SRS
+            // record too, so undoing doesn't reset its review schedule.
+            const deletedCard = card;
+            const deletedSrsRecord = srsState[card.id] || null;
+            const deletedBatchId = activeBatch;
+            const deckWasEmptiedName = deckNames[activeBatch];
 
             cards = cards.filter(c => c.id !== card.id);
             saveCards();
@@ -168,14 +201,27 @@
             const remainingCards = cards.filter(
               c => (c.batchId || 'default') === activeBatch
             );
+            const deckWasEmptied = remainingCards.length === 0;
 
-            if (remainingCards.length === 0) {
+            if (deckWasEmptied) {
               delete deckNames[activeBatch];
               saveDeckNames();
               activeBatch = null;
             }
 
             renderDeck();
+
+            showUndoToast('Deleted flashcard', () => {
+              cards = [...cards, deletedCard];
+              if (deletedSrsRecord) { srsState[deletedCard.id] = deletedSrsRecord; saveSrsState(srsState); }
+              if (deckWasEmptied) {
+                deckNames[deletedBatchId] = deckWasEmptiedName;
+                saveDeckNames();
+                activeBatch = deletedBatchId; // jump back into the restored deck
+              }
+              saveCards();
+              renderDeck();
+            });
           });
           grid.appendChild(el);
         });
@@ -694,6 +740,13 @@ Respond with ONLY valid HTML using just <p> and <ul><li> tags, no markdown, no c
         quizOverlay.classList.remove('open');
         renderDeck(); // refresh due counts/banner now that ratings changed
         const items = quizCards.map(c => quizAnswerLog[c.id] || {q: c.q, correctAnswer: c.a, userAnswer: '(skipped)', correct: false});
+        logScoreAttempt({
+          subject: pendingModeBatchId,
+          subjectType: 'deck',
+          mode: 'quiz',
+          right: items.filter(i => i.correct).length,
+          total: items.length
+        });
         showQuizResultsScreen(quizDeckTitle.textContent, items);
       }
     });
@@ -766,9 +819,11 @@ Respond with ONLY a JSON object like:
     const examResultsList = document.getElementById('examResultsList');
     const examScoreBanner = document.getElementById('examScoreBanner');
 
+    let examActiveBatchId = null;
     function startExamSession(batchId) {
       examCards = cards.filter(c => (c.batchId || 'default') === batchId);
       if (examCards.length === 0) {alert("This deck has no cards to study!"); return;}
+      examActiveBatchId = batchId;
 
       const examLabel = (deckNames[batchId] || 'Untitled Deck').toUpperCase();
       examDeckTitle.textContent = examLabel;
@@ -862,6 +917,14 @@ Respond with ONLY a JSON object like:
       const right = results.filter(r => r.correct).length;
       const pct = Math.round((right / results.length) * 100);
       examScoreBanner.textContent = `${right} / ${results.length} correct (${pct}%)`;
+
+      logScoreAttempt({
+        subject: examActiveBatchId,
+        subjectType: 'deck',
+        mode: 'exam',
+        right,
+        total: results.length
+      });
 
       loadExamWeakPointsFeedback(
         document.getElementById('examFeedbackPanel'),
@@ -1156,4 +1219,3 @@ ${chunkText}`;
       const isOpen = panel.style.display === 'block';
       panel.style.display = isOpen ? 'none' : 'block';
     });
-

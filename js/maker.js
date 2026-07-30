@@ -1,3 +1,4 @@
+
 // ============================================================
 // StudyStudio — Mock Quiz & Exam Maker
 // Custom quiz/exam generation from uploaded notes/files, plus
@@ -489,6 +490,13 @@ Return ONLY a JSON object with one property, "questions", containing a JSON arra
         makerQuizOverlay.classList.remove('open');
         showFloatTutorFab(false);
         const items = makerQuizQuestions.map(q => makerQuizAnswerLog[q.id] || {q: q.q, correctAnswer: q.answer, userAnswer: '(skipped)', correct: false});
+        logScoreAttempt({
+          subject: makerQuizTitle.textContent,
+          subjectType: 'topic',
+          mode: 'quiz',
+          right: items.filter(i => i.correct).length,
+          total: items.length
+        });
         showQuizResultsScreen(makerQuizTitle.textContent, items);
       }
     });
@@ -650,6 +658,14 @@ Return ONLY a JSON object with one property, "questions", containing a JSON arra
       const pct = Math.round((right / results.length) * 100);
       makerExamScoreBanner.textContent = `${right} / ${results.length} correct (${pct}%)`;
 
+      logScoreAttempt({
+        subject: makerExamTitle.textContent,
+        subjectType: 'topic',
+        mode: 'exam',
+        right,
+        total: results.length
+      });
+
       loadExamWeakPointsFeedback(
         document.getElementById('makerExamFeedbackPanel'),
         document.getElementById('makerExamFeedbackBody'),
@@ -680,4 +696,3 @@ Return ONLY a JSON object with one property, "questions", containing a JSON arra
       makerExamOverlay.classList.remove('open');
       showFloatTutorFab(false);
     });
-

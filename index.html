@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -30,6 +31,15 @@
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
 
+  <!-- PWA: installable app shell + offline support (see js/pwa.js and sw.js) -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#14181f">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="StudyStudio">
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
@@ -61,6 +71,22 @@
         </div>
       </div>
 
+      <!-- Due Today widget: standalone per-deck SRS breakdown with a
+           one-click "Review now" per deck plus a "Review all" action.
+           Populated by js/dashboard.js. Hidden entirely when nothing
+           is due. Sits above the stats strip since reviewing is the
+           single most actionable thing a returning student can do. -->
+      <div class="due-today-widget" id="dueTodayWidget" style="display:none;">
+        <div class="due-today-header">
+          <div class="due-today-title">
+            <span class="due-today-icon">📚</span>
+            <span id="dueTodayHeadline">Cards due today</span>
+          </div>
+          <button type="button" class="btn btn-primary btn-sm" id="dueTodayReviewAllBtn">▶ Review all</button>
+        </div>
+        <div class="due-today-decks" id="dueTodayDecks"></div>
+      </div>
+
       <!-- Dashboard strip: quick glance at what's due/pending across
            features, computed from existing storage (no new data model).
            Populated by js/dashboard.js. Hidden entirely if there's
@@ -71,7 +97,7 @@
         <button class="landing-card" id="landingNotesBtn">
           <div class="icon">🗒️</div>
           <h3>Notes</h3>
-          <p>Write notes with live Markdown &amp; LaTeX preview, then turn any note straight into a flashcard deck in one click.</p>
+          <p>Write notes with live Markdown & LaTeX preview, then turn any note straight into a flashcard deck in one click.</p>
           <div class="go">OPEN →</div>
         </button>
         <button class="landing-card" id="landingFlashcardBtn">
@@ -82,7 +108,7 @@
         </button>
         <button class="landing-card" id="landingMakerBtn">
           <div class="icon">📝</div>
-          <h3>Mock Quiz &amp; Exam Maker</h3>
+          <h3>Mock Quiz & Exam Maker</h3>
           <p>Give a topic, upload notes/photos/PDFs, and choose your question types. Get a custom quiz or timed exam, complete with hints.</p>
           <div class="go">OPEN →</div>
         </button>
@@ -106,7 +132,7 @@
         </button>
         <button class="landing-card" id="landingWatchBtn">
           <div class="icon">▶️</div>
-          <h3>Watch &amp; Note</h3>
+          <h3>Watch & Note</h3>
           <p>Paste a YouTube link and take timestamped notes or sketch on a whiteboard right beside the video, without switching tabs.</p>
           <div class="go">OPEN →</div>
         </button>
@@ -122,7 +148,7 @@
       <div class="nav-tabs">
         <button class="nav-tab" id="tabNotesBtn">🗒️ Notes</button>
         <button class="nav-tab active" id="tabDeckBtn">⚡ Flashcard Deck</button>
-        <button class="nav-tab" id="tabMakerBtn">📝 Mock Quiz &amp; Exam</button>
+        <button class="nav-tab" id="tabMakerBtn">📝 Mock Quiz & Exam</button>
         <button class="nav-tab" id="tabSocraticBtn">🏛️ Socratic Tutor</button>
         <button class="nav-tab" id="tabGwaBtn">🎓 GWA Calculator</button>
         <button class="nav-tab" id="tabPlannerBtn">🗓️ Planner</button>
@@ -143,6 +169,9 @@
         <div class="sidebar-section">
           <h4>Your Notes</h4>
           <button class="btn btn-primary" id="newNoteBtn" style="width: 100%; margin-bottom: 12px;">+ New Note</button>
+          <button class="btn btn-ghost" id="scanIntoNoteBtn" style="width: 100%; margin-bottom: 12px;" title="Scan a photo or PDF into a new note">📷 Scan into Note</button>
+          <input type="file" id="scanIntoNoteInput" accept="image/png,image/jpeg,image/webp,image/heic,image/heif,application/pdf" style="display:none;">
+          <div class="hint-text" id="scanIntoNoteStatus" style="display:none; margin:-4px 0 10px;"></div>
           <div id="notesList"></div>
           <div class="empty" id="notesListEmpty" style="display:none; padding:20px 8px;">
             <p style="margin-bottom:0; font-size:13px;">No notes yet — hit "+ New Note" to start writing.</p>
@@ -227,7 +256,7 @@
   <!-- VIEW: MOCK QUIZ & EXAM MAKER -->
   <div class="app-view" id="makerView">
     <div class="maker-container">
-      <h2>Mock Quiz &amp; Exam Maker</h2>
+      <h2>Mock Quiz & Exam Maker</h2>
       <div class="sub">Tell it the topic and how you want to be tested — it builds the best mock quiz or exam it can from everything you give it.</div>
 
       <div class="maker-field">
@@ -415,6 +444,19 @@
             </div>
           </div>
         </div>
+        <div class="maker-field" style="margin:0; position:relative;">
+          <label for="plannerLinkTriggerBtn">Link (optional)</label>
+          <button type="button" class="planner-date-trigger" id="plannerLinkTriggerBtn">
+            <span id="plannerLinkTriggerLabel">None</span>
+            <span class="planner-date-trigger-icon">🔗</span>
+          </button>
+          <div class="planner-cal-popover" id="plannerLinkPopover" style="width:260px;">
+            <div class="planner-link-list" id="plannerLinkList"></div>
+            <div class="planner-cal-footer">
+              <button type="button" class="link-danger" id="plannerLinkClearBtn">Clear</button>
+            </div>
+          </div>
+        </div>
         <button class="btn btn-primary" id="plannerAddTaskBtn" style="padding:10px 18px;">+ Add</button>
       </div>
 
@@ -487,7 +529,7 @@
 
         <div class="empty" id="watchEditorEmpty" style="display:flex; height:100%; align-items:center; justify-content:center;">
           <div style="text-align:center; max-width:360px;">
-            <h2 style="margin-bottom:8px;">Watch &amp; take notes side-by-side</h2>
+            <h2 style="margin-bottom:8px;">Watch & take notes side-by-side</h2>
             <p>Paste a YouTube link to start a new session, or pick one from the list.</p>
           </div>
         </div>
@@ -882,6 +924,39 @@
     </div>
   </div>
 
+  <!-- EXPORT DECK MODAL -->
+  <div class="overlay" id="exportDeckOverlay">
+    <div class="modal" style="max-width:420px;">
+      <h3>Export Deck</h3>
+      <div class="sub">Export "<span id="exportDeckName"></span>" for use outside StudyStudio.</div>
+      <div class="modal-actions" style="flex-direction:column; align-items:stretch; gap:10px; margin-top:16px;">
+        <button class="btn btn-primary" type="button" id="exportDeckAnkiBtn" style="width:100%;">⬇ Export for Anki (.txt)</button>
+        <div class="hint-text" style="margin:-4px 0 4px;">Import in Anki desktop via File → Import, "Fields separated by: Tab".</div>
+        <button class="btn btn-ghost" type="button" id="exportDeckCsvBtn" style="width:100%;">⬇ Export as CSV</button>
+        <div class="hint-text" style="margin:-4px 0 4px;">Opens in Excel/Sheets, or import into most other flashcard apps.</div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" id="exportDeckCancelBtn">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCORE HISTORY MODAL -->
+  <div class="overlay" id="scoreHistoryOverlay">
+    <div class="modal" style="max-width:560px;">
+      <h3 id="scoreHistoryTitle">Quiz & Exam History</h3>
+      <div class="sub">Every graded quiz/exam attempt, most recent first.</div>
+      <div id="scoreHistoryList" style="max-height:50vh; overflow-y:auto; margin-top:10px;"></div>
+      <div class="empty" id="scoreHistoryEmpty" style="display:none; padding:20px 8px;">
+        <p style="margin-bottom:0; font-size:13px;">No attempts logged yet — take a quiz or exam to start tracking progress.</p>
+      </div>
+      <div class="modal-actions">
+        <button class="link-danger" id="scoreHistoryClearBtn">Clear history</button>
+        <button class="btn btn-ghost" id="closeScoreHistoryBtn">Close</button>
+      </div>
+    </div>
+  </div>
+
   <!-- SETTINGS MODAL -->
   <div class="overlay" id="settingsOverlay">
     <div class="modal">
@@ -928,9 +1003,28 @@
         <div class="theme-swatch-grid" id="themeSwatchGrid"><!-- populated by js/themes.js --></div>
       </div>
 
+      <div class="field" id="pwaInstallField" style="display:none;">
+        <label>Install App</label>
+        <div class="note">Install StudyStudio to your device for offline access and a home-screen icon — no app store needed.</div>
+        <div class="modal-actions" style="justify-content:flex-start; margin-top:8px;">
+          <button class="btn btn-ghost" type="button" id="pwaInstallBtn">📲 Install StudyStudio</button>
+        </div>
+      </div>
+
       <div class="field">
         <label>Your Data</label>
         <div class="note" id="backupNote">Currently stored: — card(s), — tutor conversation(s).</div>
+
+        <!-- Storage usage readout: rough estimate against a conservative
+             5MB baseline (actual browser quotas vary, usually 5-10MB).
+             Populated by refreshStorageUsageNote() in settings.js. -->
+        <div class="storage-usage-block">
+          <div class="storage-usage-bar-track">
+            <div class="storage-usage-bar-fill" id="storageUsageBarFill" style="width:0%;"></div>
+          </div>
+          <div class="note" id="storageUsageNote" style="margin-top:4px;">Calculating storage usage…</div>
+        </div>
+
         <div class="modal-actions" style="justify-content:flex-start; margin-top:8px;">
           <button class="btn btn-ghost" type="button" id="backupExportBtn">⬇ Export backup</button>
           <button class="btn btn-ghost" type="button" id="backupImportBtn">⬆ Import backup</button>
@@ -954,23 +1048,33 @@
          2. api.js       — AI provider calls, quota, grading cache
          3. utils.js     — escapeHtml, markdown formatter, error-retry UI
          4. themes.js    — theme switching + swatch picker
-         5. srs.js         — spaced-repetition scheduler (SM-2)
-         6. deck.js         — flashcard deck, study/quiz/exam engines
-         7. socratic.js       — main Socratic tutor chat
-         8. maker.js             — mock quiz & exam maker
-         9. side-tutor.js          — in-quiz "ask the tutor" drawer
-        10. gwa.js                   — GWA calculator
-        11. planner.js                 — task/schedule planner
-        12. watch.js                      — Watch & Note (YouTube + timestamped notes/whiteboard + video tutor chat)
-        13. dashboard.js                     — landing-screen stats strip (due cards, planner, GWA, notes)
-        14. settings.js                        — settings modal + data backup
-        15. main.js                              — nav/view switching + app init (LAST)
+         1. config.js    — localStorage keys & shared constants
+         2. pwa.js         — service worker registration + install prompt
+         3. api.js           — AI provider calls, quota, grading cache
+         4. utils.js           — escapeHtml, markdown formatter, error-retry UI, undo toasts, storage-quota guard
+         5. themes.js             — theme switching + swatch picker
+         6. srs.js                  — spaced-repetition scheduler (SM-2)
+         7. scores.js                 — quiz/exam score history log + trend UI
+         8. export.js                    — deck export to Anki/CSV
+         9. deck.js                         — flashcard deck, study/quiz/exam engines
+        10. socratic.js                        — main Socratic tutor chat
+        11. maker.js                              — mock quiz & exam maker
+        12. side-tutor.js                            — in-quiz "ask the tutor" drawer
+        13. gwa.js                                      — GWA calculator
+        14. planner.js                                     — task/schedule planner
+        15. watch.js                                          — Watch & Note (YouTube + timestamped notes/whiteboard + video tutor chat)
+        16. dashboard.js                                         — landing-screen Due Today widget + stats strip (due cards, planner, GWA, notes)
+        17. settings.js                                             — settings modal + data backup
+        18. main.js                                                    — nav/view switching + app init (LAST)
   ==================================================================== -->
   <script src="js/config.js"></script>
+  <script src="js/pwa.js"></script>
   <script src="js/api.js"></script>
   <script src="js/utils.js"></script>
   <script src="js/themes.js"></script>
   <script src="js/srs.js"></script>
+  <script src="js/scores.js"></script>
+  <script src="js/export.js"></script>
   <script src="js/deck.js"></script>
   <script src="js/socratic.js"></script>
   <script src="js/maker.js"></script>
