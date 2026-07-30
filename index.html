@@ -61,6 +61,12 @@
         </div>
       </div>
 
+      <!-- Dashboard strip: quick glance at what's due/pending across
+           features, computed from existing storage (no new data model).
+           Populated by js/dashboard.js. Hidden entirely if there's
+           nothing to show yet (brand-new install). -->
+      <div class="dashboard-strip" id="dashboardStrip" style="display:none;"></div>
+
       <div class="landing-grid">
         <button class="landing-card" id="landingNotesBtn">
           <div class="icon">🗒️</div>
@@ -956,8 +962,9 @@
         10. gwa.js                   — GWA calculator
         11. planner.js                 — task/schedule planner
         12. watch.js                      — Watch & Note (YouTube + timestamped notes/whiteboard + video tutor chat)
-        13. settings.js                     — settings modal + data backup
-        14. main.js                           — nav/view switching + app init (LAST)
+        13. dashboard.js                     — landing-screen stats strip (due cards, planner, GWA, notes)
+        14. settings.js                        — settings modal + data backup
+        15. main.js                              — nav/view switching + app init (LAST)
   ==================================================================== -->
   <script src="js/config.js"></script>
   <script src="js/api.js"></script>
@@ -973,6 +980,7 @@
   <script src="js/notes.js"></script>
   <script src="js/pomodoro.js"></script>
   <script src="js/watch.js"></script>
+  <script src="js/dashboard.js"></script>
   <script src="js/settings.js"></script>
   <script src="js/main.js"></script>
 </body>

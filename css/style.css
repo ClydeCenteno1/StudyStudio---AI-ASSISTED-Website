@@ -1320,15 +1320,17 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
       padding: 24px;
       overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
     }
 
     .landing-inner {
       width: 100%;
       max-width: 980px;
       text-align: center;
+      margin: auto 0;
+      padding-bottom: 24px;
     }
 
     .landing-inner h1 {
@@ -1345,7 +1347,7 @@
 
     .landing-grid {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
       gap: 18px;
     }
 
@@ -3111,5 +3113,54 @@
       .watch-editor-panes {
         grid-template-columns: 1fr;
         grid-template-rows: 240px 1fr;
+      }
+    }
+
+    /* ==================== Dashboard Strip (landing screen) ==================== */
+
+    .dashboard-strip {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 10px;
+      max-width: 900px;
+      margin: 0 auto 28px;
+    }
+
+    .dash-stat {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      text-align: left;
+      cursor: pointer;
+      transition: border-color 0.15s ease, transform 0.12s ease;
+    }
+
+    .dash-stat:hover {
+      border-color: var(--accent);
+      transform: translateY(-1px);
+    }
+
+    .dash-stat-value {
+      font-family: 'Fraunces', serif;
+      font-size: 24px;
+      font-weight: 600;
+      color: var(--ink);
+      line-height: 1.1;
+    }
+
+    .dash-stat-value.warn {
+      color: var(--danger);
+    }
+
+    .dash-stat-label {
+      font-size: 11.5px;
+      color: var(--ink-soft);
+      margin-top: 4px;
+    }
+
+    @media (max-width: 640px) {
+      .dashboard-strip {
+        grid-template-columns: repeat(2, 1fr);
       }
     }
