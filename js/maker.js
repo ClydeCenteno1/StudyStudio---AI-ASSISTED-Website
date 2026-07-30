@@ -254,7 +254,7 @@ Return ONLY a JSON object with one property, "questions", containing a JSON arra
           throw new Error('The model didn\'t generate any questions from that input. Try rephrasing your topic, or try again.');
         }
 
-        const questions = allQuestions.map(q => ({
+        let questions = allQuestions.map(q => ({
           id: crypto.randomUUID(),
           type: q.type === 'mc' ? 'mc' : 'identification',
           q: q.q,
@@ -262,6 +262,20 @@ Return ONLY a JSON object with one property, "questions", containing a JSON arra
           answer: q.answer,
           hint: q.hint || 'Think about the core idea the question is testing.'
         }));
+
+        // In "mixed" mode the model is only told to use a mix of types,
+        // not how to order them — and structured generation reliably
+        // groups objects by shape, so responses tend to come back as
+        // every "mc" question first, then every "identification"
+        // question, instead of actually interleaved. That made mock
+        // quizzes/exams predictable (always MC first) instead of the
+        // mixed experience the student asked for. Interleave client-side
+        // so the two types alternate as evenly as their counts allow.
+        // mc-only / identification-only sets have nothing to interleave,
+        // so this only runs for "mixed".
+        if (makerQType === 'mixed') {
+          questions = interleaveByType(questions);
+        }
 
         makerSet = {
           title: (topic || 'Custom Mock Set').slice(0, 60),
@@ -285,6 +299,43 @@ Return ONLY a JSON object with one property, "questions", containing a JSON arra
         makerGenerateBtn.disabled = false;
         makerLoading.classList.remove('active');
       }
+    }
+
+    // Interleaves an array of questions (each with a .type) so the two
+    // types alternate as evenly as their relative counts allow, instead
+    // of all of one type appearing before all of the other. Uses the
+    // classic largest-remainder / Bresenham-style distribution so e.g.
+    // 7 mc + 3 identification comes out roughly mc, mc, id, mc, mc, id,
+    // mc, mc, id, mc rather than mc*7 then id*3.
+    function interleaveByType(questions) {
+      const groups = {};
+      questions.forEach(q => {
+        (groups[q.type] = groups[q.type] || []).push(q);
+      });
+      const types = Object.keys(groups);
+      if (types.length <= 1) return questions; // nothing to interleave
+
+      const total = questions.length;
+      const result = [];
+      const counters = {};
+      types.forEach(t => { counters[t] = 0; });
+
+      for (let i = 0; i < total; i++) {
+        // Pick whichever type is furthest behind its fair share so far.
+        let bestType = types[0];
+        let bestDeficit = -Infinity;
+        types.forEach(t => {
+          const fairShare = (groups[t].length / total) * (i + 1);
+          const deficit = fairShare - counters[t];
+          if (counters[t] < groups[t].length && deficit > bestDeficit) {
+            bestDeficit = deficit;
+            bestType = t;
+          }
+        });
+        result.push(groups[bestType][counters[bestType]]);
+        counters[bestType]++;
+      }
+      return result;
     }
 
     // ---------- MAKER QUIZ ENGINE (one question at a time) ----------

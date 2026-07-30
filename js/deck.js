@@ -39,15 +39,28 @@
           batches[b].push(c);
         });
 
+        // Spaced-repetition due counts — per deck (shown on each folder
+        // card) and overall (drives the cross-deck banner above the grid).
+        const dueCounts = getDueCountsByBatch(cards);
+        const totalDue = Object.values(dueCounts).reduce((a, b) => a + b, 0);
+        const dueBanner = document.getElementById('dueBanner');
+        if (totalDue > 0) {
+          document.getElementById('dueBannerCount').textContent = totalDue;
+          dueBanner.style.display = 'flex';
+        } else {
+          dueBanner.style.display = 'none';
+        }
+
         for (const [batchId, batchCards] of Object.entries(batches)) {
           const folder = document.createElement('div');
           folder.className = 'folder-card';
           const title = deckNames[batchId] || 'Untitled Deck';
+          const dueInDeck = dueCounts[batchId] || 0;
 
           folder.innerHTML = `
   <h3 class="folder-title">${escapeHtml(title)}</h3>
 
-  <div class="folder-count">${batchCards.length} cards</div>
+  <div class="folder-count">${batchCards.length} cards${dueInDeck > 0 ? ` · <span class="due-pill">${dueInDeck} due</span>` : ''}</div>
 
   <button class="btn-study-action study-btn">
     ▶ Study Deck
@@ -77,6 +90,7 @@
 
             saveCards();
             saveDeckNames();
+            pruneSrsState(cards);
 
             renderDeck();
           });
@@ -148,6 +162,7 @@
 
             cards = cards.filter(c => c.id !== card.id);
             saveCards();
+            pruneSrsState(cards);
 
             // If the deck becomes empty, remove its name and return to folders
             const remainingCards = cards.filter(
@@ -201,6 +216,7 @@
     let activeStudyCards = [];
     let studyIndex = 0;
     let studySession = {results: {}};
+    let studyIsDueReview = false; // true when launched from the cross-deck "Review Due Cards" banner
     const studyOverlay = document.getElementById('studyOverlay');
     const studyCardFlip = document.getElementById('studyCardFlip');
     const studyFrontText = document.getElementById('studyFrontText');
@@ -208,24 +224,40 @@
     const studyProgress = document.getElementById('studyProgress');
     const studyDeckTitle = document.getElementById('studyDeckTitle');
     const studyScore = document.getElementById('studyScore');
+    const studyDueStamp = document.getElementById('studyDueStamp');
     const studyAnswerInput = document.getElementById('studyAnswerInput');
     const studyCheckBtn = document.getElementById('studyCheckBtn');
     const studyVerdict = document.getElementById('studyVerdict');
+    const srsRateRow = document.getElementById('srsRateRow');
 
     function currentStudyCard() {
       return activeStudyCards[studyIndex];
     }
 
+    // batchId can be a real deck id, or the special value '__due__' to
+    // pull every due card across all decks (used by the "Review Due
+    // Cards" banner on the folders screen).
     function startStudySession(batchId) {
-      activeStudyCards = cards.filter(c => (c.batchId || 'default') === batchId);
+      studyIsDueReview = batchId === '__due__';
+
+      if (studyIsDueReview) {
+        activeStudyCards = getDueCards(cards);
+        studyDeckTitle.textContent = 'DUE REVIEW (ALL DECKS)';
+        studyDeckTitle.title = '';
+      } else {
+        activeStudyCards = cards.filter(c => (c.batchId || 'default') === batchId);
+        const label = (deckNames[batchId] || 'Untitled Deck').toUpperCase();
+        studyDeckTitle.textContent = label;
+        studyDeckTitle.title = label; // full name on hover once truncated
+      }
+
       if (activeStudyCards.length === 0) {
-        alert("This deck has no cards to study!");
+        alert(studyIsDueReview ? "No cards are due for review right now!" : "This deck has no cards to study!");
         return;
       }
       studyIndex = 0;
       studySession = {results: {}};
       updateStudyScore();
-      studyDeckTitle.textContent = (deckNames[batchId] || 'Untitled Deck').toUpperCase();
       updateStudyCard();
       studyOverlay.classList.add('open');
     }
@@ -233,12 +265,16 @@
     function updateStudyCard() {
       const currentCard = activeStudyCards[studyIndex];
       studyCardFlip.classList.remove('flipped');
+      srsRateRow.style.display = 'none';
 
       studyFrontText.textContent = currentCard.q;
       studyBackText.textContent = currentCard.a;
       studyProgress.textContent = `${studyIndex + 1} / ${activeStudyCards.length}`;
       document.getElementById('studyPrevBtn').disabled = studyIndex === 0;
       document.getElementById('studyNextBtn').disabled = studyIndex === activeStudyCards.length - 1;
+
+      const dueCount = getDueCards(activeStudyCards).length;
+      studyDueStamp.textContent = `${dueCount} due`;
 
       studyAnswerInput.value = '';
       setVerdict('', null);
@@ -256,11 +292,40 @@
     }
 
     // Flip Card Controls
-    document.getElementById('studyFlipBtn').addEventListener('click', () => {
+    function toggleStudyFlip() {
       studyCardFlip.classList.toggle('flipped');
-    });
-    studyCardFlip.addEventListener('click', () => {
-      studyCardFlip.classList.toggle('flipped');
+      // Rating row only makes sense once the answer is visible — flipping
+      // back to the question hides it again rather than leaving a stale
+      // rating prompt on screen.
+      srsRateRow.style.display = studyCardFlip.classList.contains('flipped') ? 'flex' : 'none';
+    }
+    document.getElementById('studyFlipBtn').addEventListener('click', toggleStudyFlip);
+    studyCardFlip.addEventListener('click', toggleStudyFlip);
+
+    // SRS self-rating buttons (Again/Hard/Good/Easy) — only shown once
+    // flipped to the answer. Records the rating, then auto-advances to
+    // the next card (or closes the session if this was the last one),
+    // since choosing a rating is the natural "I'm done with this card"
+    // signal in flip mode.
+    document.querySelectorAll('.srs-rate-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const rating = parseInt(btn.dataset.rating, 10);
+        const card = currentStudyCard();
+        rateCard(card.id, rating);
+
+        // Reuse the existing right/wrong score readout: Again = wrong,
+        // anything else = a successful recall.
+        studySession.results[card.id] = rating === 0 ? 'wrong' : 'right';
+        updateStudyScore();
+
+        if (studyIndex < activeStudyCards.length - 1) {
+          studyIndex++;
+          updateStudyCard();
+        } else {
+          studyOverlay.classList.remove('open');
+          renderDeck(); // refresh due counts/banner now that ratings changed
+        }
+      });
     });
 
     // Navigation Controls
@@ -278,6 +343,7 @@
     });
     document.getElementById('closeStudyBtn').addEventListener('click', () => {
       studyOverlay.classList.remove('open');
+      renderDeck(); // refresh due counts/banner in case ratings changed this session
     });
 
     // Keyboard Shortcuts (Space to flip, Left/Right arrows to move)
@@ -291,7 +357,7 @@
 
       if (e.code === 'Space') {
         e.preventDefault();
-        studyCardFlip.classList.toggle('flipped');
+        toggleStudyFlip();
       } else if (e.code === 'ArrowRight' && studyIndex < activeStudyCards.length - 1) {
         studyIndex++;
         updateStudyCard();
@@ -324,6 +390,13 @@
 
         const isCorrect = grade.correct;
         studySession.results[card.id] = isCorrect ? 'right' : 'wrong';
+        rateCardCorrectness(card.id, isCorrect);
+        studyDueStamp.textContent = `${getDueCards(activeStudyCards).length} due`;
+
+        // The AI check already gave a graded signal for this card, so
+        // don't also prompt for a manual Again/Hard/Good/Easy rating —
+        // that row is only for when flipping is the sole signal.
+        srsRateRow.style.display = 'none';
 
         const verdictMsg = isCorrect
           ? `✓ Correct. ${grade.feedback}`
@@ -554,7 +627,9 @@ Respond with ONLY valid HTML using just <p> and <ul><li> tags, no markdown, no c
       quizResults = {};
       quizAnswerLog = {};
       updateQuizScore();
-      quizDeckTitle.textContent = (deckNames[batchId] || 'Untitled Deck').toUpperCase();
+      const quizLabel = (deckNames[batchId] || 'Untitled Deck').toUpperCase();
+      quizDeckTitle.textContent = quizLabel;
+      quizDeckTitle.title = quizLabel;
       quizOverlay.classList.add('open');
       await loadQuizQuestion();
     }
@@ -595,6 +670,7 @@ Respond with ONLY valid HTML using just <p> and <ul><li> tags, no markdown, no c
           quizResults[card.id] = isCorrect ? 'right' : 'wrong';
           quizAnswerLog[card.id] = {q: card.q, correctAnswer: card.a, userAnswer: optionText, correct: isCorrect};
           updateQuizScore();
+          rateCardCorrectness(card.id, isCorrect);
 
           document.querySelectorAll('.quiz-option-btn').forEach(b => {
             b.disabled = true;
@@ -616,6 +692,7 @@ Respond with ONLY valid HTML using just <p> and <ul><li> tags, no markdown, no c
         await loadQuizQuestion();
       } else {
         quizOverlay.classList.remove('open');
+        renderDeck(); // refresh due counts/banner now that ratings changed
         const items = quizCards.map(c => quizAnswerLog[c.id] || {q: c.q, correctAnswer: c.a, userAnswer: '(skipped)', correct: false});
         showQuizResultsScreen(quizDeckTitle.textContent, items);
       }
@@ -623,6 +700,7 @@ Respond with ONLY valid HTML using just <p> and <ul><li> tags, no markdown, no c
 
     document.getElementById('closeQuizBtn').addEventListener('click', () => {
       quizOverlay.classList.remove('open');
+      renderDeck(); // refresh due counts/banner in case ratings changed this session
     });
 
     /* Generate 3 plausible-but-wrong answers for a multiple-choice question,
@@ -692,7 +770,9 @@ Respond with ONLY a JSON object like:
       examCards = cards.filter(c => (c.batchId || 'default') === batchId);
       if (examCards.length === 0) {alert("This deck has no cards to study!"); return;}
 
-      examDeckTitle.textContent = (deckNames[batchId] || 'Untitled Deck').toUpperCase();
+      const examLabel = (deckNames[batchId] || 'Untitled Deck').toUpperCase();
+      examDeckTitle.textContent = examLabel;
+      examDeckTitle.title = examLabel;
       examIntro.style.display = 'block';
       examBody.style.display = 'none';
       examResultsEl.style.display = 'none';
@@ -774,6 +854,11 @@ Respond with ONLY a JSON object like:
       examBody.style.display = 'none';
       examResultsEl.style.display = 'block';
 
+      // Feed every graded result into the spaced-repetition scheduler —
+      // an exam already produces a correct/incorrect verdict per card,
+      // same signal as quiz mode or the typed-answer check in flip mode.
+      results.forEach(r => rateCardCorrectness(r.card.id, r.correct));
+
       const right = results.filter(r => r.correct).length;
       const pct = Math.round((right / results.length) * 100);
       examScoreBanner.textContent = `${right} / ${results.length} correct (${pct}%)`;
@@ -801,6 +886,7 @@ Respond with ONLY a JSON object like:
 
     document.getElementById('examCloseResultsBtn').addEventListener('click', () => {
       examOverlay.classList.remove('open');
+      renderDeck(); // refresh due counts/banner now that ratings changed
     });
     document.getElementById('closeExamBtn').addEventListener('click', () => {
       clearInterval(examTimerInterval);
@@ -816,6 +902,7 @@ Respond with ONLY a JSON object like:
           activeBatch = null;
           saveCards();
           saveDeckNames();
+          pruneSrsState(cards);
           renderDeck();
         }
       } else {
@@ -824,6 +911,7 @@ Respond with ONLY a JSON object like:
           deckNames = {};
           saveCards();
           saveDeckNames();
+          pruneSrsState(cards);
           renderDeck();
         }
       }
@@ -1057,6 +1145,10 @@ ${chunkText}`;
 
     document.getElementById('firstGenBtnInline').addEventListener('click', () => {
       generateFlashcards(document.getElementById('firstTextInline'), document.getElementById('firstGenBtnInline'));
+    });
+
+    document.getElementById('dueBannerStudyBtn').addEventListener('click', () => {
+      startStudySession('__due__');
     });
 
     document.getElementById('newDeckToggleBtn').addEventListener('click', () => {

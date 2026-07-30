@@ -62,6 +62,12 @@
       </div>
 
       <div class="landing-grid">
+        <button class="landing-card" id="landingNotesBtn">
+          <div class="icon">🗒️</div>
+          <h3>Notes</h3>
+          <p>Write notes with live Markdown &amp; LaTeX preview, then turn any note straight into a flashcard deck in one click.</p>
+          <div class="go">OPEN →</div>
+        </button>
         <button class="landing-card" id="landingFlashcardBtn">
           <div class="icon">⚡</div>
           <h3>Flashcards</h3>
@@ -86,6 +92,18 @@
           <p>Compute your Philippine General Weighted Average — add each subject's grade and units, and get your GWA instantly.</p>
           <div class="go">OPEN →</div>
         </button>
+        <button class="landing-card" id="landingPlannerBtn">
+          <div class="icon">🗓️</div>
+          <h3>Schedule Planner</h3>
+          <p>Track exams, deadlines, and to-dos on a simple board. See what's due soon at a glance, right alongside your decks.</p>
+          <div class="go">OPEN →</div>
+        </button>
+        <button class="landing-card" id="landingWatchBtn">
+          <div class="icon">▶️</div>
+          <h3>Watch &amp; Note</h3>
+          <p>Paste a YouTube link and take timestamped notes or sketch on a whiteboard right beside the video, without switching tabs.</p>
+          <div class="go">OPEN →</div>
+        </button>
       </div>
     </div>
   </div>
@@ -96,16 +114,67 @@
       <button class="icon-btn back-to-menu-btn" id="backToMenuBtn" title="Back to menu">☰</button>
       <h1>StudyStudio</h1>
       <div class="nav-tabs">
+        <button class="nav-tab" id="tabNotesBtn">🗒️ Notes</button>
         <button class="nav-tab active" id="tabDeckBtn">⚡ Flashcard Deck</button>
         <button class="nav-tab" id="tabMakerBtn">📝 Mock Quiz &amp; Exam</button>
         <button class="nav-tab" id="tabSocraticBtn">🏛️ Socratic Tutor</button>
         <button class="nav-tab" id="tabGwaBtn">🎓 GWA Calculator</button>
+        <button class="nav-tab" id="tabPlannerBtn">🗓️ Planner</button>
+        <button class="nav-tab" id="tabWatchBtn">▶️ Watch</button>
       </div>
     </div>
     <div class="topbar-actions">
       <span class="stamp mono" id="cardCountStamp">0 CARDS</span>
       <button class="icon-btn" id="openSettingsBtn" title="Settings" aria-label="Settings">⚙</button>
     </div>
+  </div>
+
+  <!-- VIEW: NOTES -->
+  <div class="app-view" id="notesView">
+    <div class="notes-main">
+      <div class="sidebar-scrim" id="notesSidebarScrim"></div>
+      <div class="sidebar notes-sidebar" id="notesSidebar">
+        <div class="sidebar-section">
+          <h4>Your Notes</h4>
+          <button class="btn btn-primary" id="newNoteBtn" style="width: 100%; margin-bottom: 12px;">+ New Note</button>
+          <div id="notesList"></div>
+          <div class="empty" id="notesListEmpty" style="display:none; padding:20px 8px;">
+            <p style="margin-bottom:0; font-size:13px;">No notes yet — hit "+ New Note" to start writing.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="notes-editor-col">
+        <button class="icon-btn sidebar-drawer-toggle" id="notesSidebarToggleBtn" title="Your notes">☰</button>
+
+        <div class="empty" id="noteEditorEmpty" style="display:flex; height:100%; align-items:center; justify-content:center;">
+          <div style="text-align:center;">
+            <h2 style="margin-bottom:8px;">Nothing selected</h2>
+            <p>Pick a note from the list, or start a new one.</p>
+          </div>
+        </div>
+
+        <div class="note-editor-main" id="noteEditorMain" style="display:none;">
+          <div class="note-editor-toolbar">
+            <input type="text" id="noteTitleInput" class="note-title-input" placeholder="Note title…">
+            <span class="mono note-saved-stamp" id="noteSavedStamp"></span>
+            <button class="btn btn-primary" id="noteToFlashcardsBtn" title="Generate a flashcard deck from this note">⚡ Turn into flashcards</button>
+            <button class="icon-btn" id="noteDeleteBtn" title="Delete note">🗑️</button>
+          </div>
+
+          <div class="note-editor-panes">
+            <textarea id="noteBodyInput" class="note-body-input" placeholder="Write your notes here… Markdown formatting (**bold**, *italics*, lists, tables) and LaTeX ($x^2$, $$\int f(x)dx$$) are both supported — check the live preview on the right."></textarea>
+            <div class="note-preview-pane" id="notePreview"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hidden bridge textarea: notes.js writes the note body here and
+         hands it to deck.js's existing generateFlashcards(), so the
+         Notes feature reuses the exact same AI pipeline the Deck tab
+         uses rather than duplicating it. -->
+    <textarea id="noteToDeckBridge" style="display:none;"></textarea>
   </div>
 
   <!-- VIEW 1: DECK -->
@@ -132,6 +201,17 @@
         <textarea id="firstTextInline" placeholder="Paste your notes here…"></textarea>
         <button class="btn btn-primary" id="firstGenBtnInline"
           style="margin-top:14px; width:100%; padding:13px;">Generate flashcards</button>
+      </div>
+
+      <!-- Cross-deck spaced-repetition banner: shown on the folders view
+           only, when at least one card across any deck is due today.
+           Lets the student review everything that's due in one session
+           instead of hunting deck-by-deck. Populated by js/deck.js. -->
+      <div class="due-banner" id="dueBanner" style="display:none;">
+        <div class="due-banner-text">
+          <span class="due-banner-count" id="dueBannerCount">0</span> card(s) due for review today, across all decks.
+        </div>
+        <button class="btn btn-primary" id="dueBannerStudyBtn">▶ Review Due Cards</button>
       </div>
 
       <div class="grid" id="grid"></div>
@@ -281,6 +361,183 @@
     </div>
   </div>
 
+  <!-- VIEW 4: SCHEDULE PLANNER -->
+  <div class="app-view" id="plannerView">
+    <div class="maker-container" style="max-width:920px;">
+      <h2>Schedule Planner</h2>
+      <div class="sub">Track exams, deadlines, and to-dos in one place. Overdue and due-soon items are called out so nothing slips through.</div>
+
+      <!-- Add task form -->
+      <div class="planner-add-form">
+        <div class="maker-field" style="margin:0; flex:2;">
+          <label for="plannerTaskTitle">Task</label>
+          <input type="text" id="plannerTaskTitle" placeholder="e.g. Physics Long Exam 2 — Chapters 4-6">
+        </div>
+        <div class="maker-field" style="margin:0;">
+          <label for="plannerTaskType">Type</label>
+          <select id="plannerTaskType">
+            <option value="exam">📝 Exam</option>
+            <option value="homework">📚 Homework</option>
+            <option value="project">🛠️ Project</option>
+            <option value="other" selected>📌 Other</option>
+          </select>
+        </div>
+        <div class="maker-field" style="margin:0; position:relative;">
+          <label for="plannerDueTriggerBtn">Due date</label>
+          <button type="button" class="planner-date-trigger" id="plannerDueTriggerBtn">
+            <span id="plannerDueTriggerLabel">No date</span>
+            <span class="planner-date-trigger-icon">📅</span>
+          </button>
+          <!-- Real value lives here; the calendar popover below only ever
+               writes to this input, so plannerAddTaskBtn's existing
+               .value read keeps working unchanged. -->
+          <input type="date" id="plannerTaskDue" style="display:none;">
+
+          <div class="planner-cal-popover" id="plannerCalPopover">
+            <div class="planner-cal-header">
+              <button type="button" class="icon-btn" id="plannerCalPrevBtn" title="Previous month">‹</button>
+              <span class="planner-cal-month-label" id="plannerCalMonthLabel"></span>
+              <button type="button" class="icon-btn" id="plannerCalNextBtn" title="Next month">›</button>
+            </div>
+            <div class="planner-cal-weekdays">
+              <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
+            </div>
+            <div class="planner-cal-grid" id="plannerCalGrid"></div>
+            <div class="planner-cal-footer">
+              <button type="button" class="link-danger" id="plannerCalClearBtn">Clear</button>
+              <button type="button" class="planner-cal-today-btn" id="plannerCalTodayBtn">Today</button>
+            </div>
+          </div>
+        </div>
+        <button class="btn btn-primary" id="plannerAddTaskBtn" style="padding:10px 18px;">+ Add</button>
+      </div>
+
+      <!-- Due-soon summary strip -->
+      <div class="planner-summary" id="plannerSummary"></div>
+
+      <!-- Filter row -->
+      <div class="planner-filters">
+        <div class="pill-group" id="plannerFilterGroup">
+          <button class="pill-btn active" data-filter="all">All</button>
+          <button class="pill-btn" data-filter="exam">📝 Exams</button>
+          <button class="pill-btn" data-filter="homework">📚 Homework</button>
+          <button class="pill-btn" data-filter="project">🛠️ Projects</button>
+          <button class="pill-btn" data-filter="other">📌 Other</button>
+        </div>
+        <label class="planner-hide-done">
+          <input type="checkbox" id="plannerHideDoneToggle">
+          Hide completed
+        </label>
+      </div>
+
+      <!-- Board: 3 status columns -->
+      <div class="planner-board">
+        <div class="planner-column" data-status="todo">
+          <div class="planner-column-header">
+            <span>To Do</span>
+            <span class="planner-column-count" id="plannerCountTodo">0</span>
+          </div>
+          <div class="planner-column-body" id="plannerColTodo"></div>
+        </div>
+        <div class="planner-column" data-status="doing">
+          <div class="planner-column-header">
+            <span>In Progress</span>
+            <span class="planner-column-count" id="plannerCountDoing">0</span>
+          </div>
+          <div class="planner-column-body" id="plannerColDoing"></div>
+        </div>
+        <div class="planner-column" data-status="done">
+          <div class="planner-column-header">
+            <span>Done</span>
+            <span class="planner-column-count" id="plannerCountDone">0</span>
+          </div>
+          <div class="planner-column-body" id="plannerColDone"></div>
+        </div>
+      </div>
+
+      <div class="empty" id="plannerEmptyState" style="display:none; margin-top:12px;">
+        <p style="margin-bottom:0;">No tasks yet — add your first exam or deadline above.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- VIEW 5: WATCH & NOTE -->
+  <div class="app-view" id="watchView">
+    <div class="notes-main">
+      <div class="sidebar-scrim" id="watchSidebarScrim"></div>
+      <div class="sidebar notes-sidebar" id="watchSidebar">
+        <div class="sidebar-section">
+          <h4>Watch Sessions</h4>
+          <button class="btn btn-primary" id="newWatchSessionBtn" style="width: 100%; margin-bottom: 12px;">+ New Session</button>
+          <div id="watchSessionList"></div>
+          <div class="empty" id="watchSessionListEmpty" style="display:none; padding:20px 8px;">
+            <p style="margin-bottom:0; font-size:13px;">No sessions yet — paste a YouTube link to start one.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="notes-editor-col">
+        <button class="icon-btn sidebar-drawer-toggle" id="watchSidebarToggleBtn" title="Your sessions">☰</button>
+
+        <div class="empty" id="watchEditorEmpty" style="display:flex; height:100%; align-items:center; justify-content:center;">
+          <div style="text-align:center; max-width:360px;">
+            <h2 style="margin-bottom:8px;">Watch &amp; take notes side-by-side</h2>
+            <p>Paste a YouTube link to start a new session, or pick one from the list.</p>
+          </div>
+        </div>
+
+        <div class="watch-editor-main" id="watchEditorMain" style="display:none;">
+          <div class="note-editor-toolbar">
+            <input type="text" id="watchUrlInput" class="note-title-input" placeholder="Paste a YouTube link…" style="font-family:'IBM Plex Mono', monospace; font-size:14px; font-weight:400;">
+            <button class="btn btn-ghost" id="watchLoadUrlBtn" title="Load this video">Load</button>
+            <span class="mono note-saved-stamp" id="watchSavedStamp"></span>
+            <button class="icon-btn" id="watchDeleteBtn" title="Delete session">🗑️</button>
+          </div>
+
+          <div class="watch-editor-panes">
+            <div class="watch-video-pane" id="watchVideoPane">
+              <div class="watch-video-placeholder" id="watchVideoPlaceholder">
+                <div class="dz-icon">▶️</div>
+                <div class="dz-text">Paste a YouTube link above and hit Load.</div>
+              </div>
+              <div id="watchPlayerMount" style="display:none;"></div>
+            </div>
+
+            <div class="watch-side-pane">
+              <div class="pill-group" id="watchModeGroup" style="margin-bottom:10px;">
+                <button class="pill-btn active" data-watchmode="notes">🗒️ Notes</button>
+                <button class="pill-btn" data-watchmode="whiteboard">✏️ Whiteboard</button>
+              </div>
+
+              <!-- Notes mode -->
+              <div class="watch-notes-mode" id="watchNotesMode">
+                <div class="watch-notes-composer">
+                  <button class="btn btn-ghost" id="watchStampBtn" title="Insert current video timestamp">⏱ Insert timestamp</button>
+                  <textarea id="watchNoteInput" placeholder="Type a note… click 'Insert timestamp' to mark where you are in the video."></textarea>
+                  <button class="btn btn-primary" id="watchAddNoteBtn">+ Add note</button>
+                </div>
+                <div class="watch-notes-list" id="watchNotesList"></div>
+                <div class="empty" id="watchNotesEmpty" style="padding:16px 8px;">
+                  <p style="margin-bottom:0; font-size:12.5px;">No notes yet for this session.</p>
+                </div>
+              </div>
+
+              <!-- Whiteboard mode -->
+              <div class="watch-whiteboard-mode" id="watchWhiteboardMode" style="display:none;">
+                <div class="watch-wb-toolbar">
+                  <div class="watch-wb-colors" id="watchWbColors"></div>
+                  <button class="icon-btn" id="watchWbEraserBtn" title="Eraser">🧽</button>
+                  <button class="icon-btn" id="watchWbClearBtn" title="Clear whiteboard">🗑️</button>
+                </div>
+                <canvas id="watchWhiteboardCanvas"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- MODE SELECTOR MODAL -->
   <div class="overlay" id="modeSelectOverlay">
     <div class="modal">
@@ -395,6 +652,7 @@
       <div class="study-header">
         <span id="studyDeckTitle" class="mono">DECK NAME</span>
         <span id="studyScore" class="stamp mono">0 right · 0 wrong</span>
+        <span id="studyDueStamp" class="stamp mono" title="Cards due for review today">0 due</span>
         <span id="studyProgress" class="stamp mono">1 / 10</span>
         <button class="icon-btn" id="closeStudyBtn" title="Close">✕</button>
       </div>
@@ -419,6 +677,21 @@
         <button class="btn btn-primary" id="studyCheckBtn">Check</button>
       </div>
       <div class="study-verdict" id="studyVerdict"></div>
+
+      <!-- Self-rating row: how well did you recall this card? Shown once
+           flipped to the answer side. Feeds the spaced-repetition
+           scheduler (js/srs.js) — separate from the typed-answer AI
+           check above, since flipping through cards with no typed
+           answer would otherwise give the scheduler no signal at all. -->
+      <div class="srs-rate-row" id="srsRateRow" style="display:none;">
+        <div class="srs-rate-label">How well did you know this?</div>
+        <div class="srs-rate-btns">
+          <button class="srs-rate-btn srs-again" data-rating="0">Again</button>
+          <button class="srs-rate-btn srs-hard" data-rating="1">Hard</button>
+          <button class="srs-rate-btn srs-good" data-rating="2">Good</button>
+          <button class="srs-rate-btn srs-easy" data-rating="3">Easy</button>
+        </div>
+      </div>
 
       <div class="study-controls">
         <button class="btn btn-ghost" id="studyPrevBtn">← Previous</button>
@@ -508,6 +781,72 @@
   <!-- FLOATING "ASK THE TUTOR" BUTTON (shown while inside a maker quiz/exam) -->
   <button class="float-tutor-fab" id="floatTutorFab">🏛️ Ask the Tutor</button>
 
+  <!-- FLOATING POMODORO WIDGET (available from any view) -->
+  <div class="pomodoro-widget" id="pomodoroWidget" data-phase="work">
+    <button class="pomodoro-pill" id="pomodoroExpandBtn" title="Expand timer">
+      <span id="pomodoroPillTime">25:00</span>
+    </button>
+    <div class="pomodoro-card">
+      <div class="pomodoro-card-top">
+        <span class="pomodoro-phase-label" id="pomodoroPhaseLabel">Focus</span>
+        <div style="display:flex; gap:4px;">
+          <button class="icon-btn" id="pomodoroSettingsBtn" title="Timer settings">⚙</button>
+          <button class="icon-btn" id="pomodoroMinimizeBtn" title="Minimize">–</button>
+        </div>
+      </div>
+
+      <div class="pomodoro-ring" id="pomodoroRing" style="--pomodoro-pct: 0;">
+        <span class="pomodoro-time mono" id="pomodoroTime">25:00</span>
+      </div>
+
+      <div class="pomodoro-dots" id="pomodoroDots"></div>
+
+      <div class="pomodoro-controls">
+        <button class="icon-btn" id="pomodoroResetBtn" title="Reset this phase">↺</button>
+        <button class="btn btn-primary pomodoro-play-btn" id="pomodoroPlayPauseBtn" title="Start">▶</button>
+        <button class="icon-btn" id="pomodoroSkipBtn" title="Skip to next phase">⏭</button>
+      </div>
+
+      <div class="pomodoro-phase-banner" id="pomodoroPhaseBanner"></div>
+    </div>
+  </div>
+
+  <!-- POMODORO SETTINGS POPOVER -->
+  <div class="overlay" id="pomodoroSettingsPopover">
+    <div class="modal" style="max-width:360px;">
+      <h3>Timer Settings</h3>
+      <div class="sub">Durations are in minutes.</div>
+
+      <div class="field">
+        <label for="pomodoroWorkMinsInput">Focus session</label>
+        <input type="number" id="pomodoroWorkMinsInput" min="1" max="180" value="25">
+      </div>
+      <div class="field">
+        <label for="pomodoroShortBreakMinsInput">Short break</label>
+        <input type="number" id="pomodoroShortBreakMinsInput" min="1" max="180" value="5">
+      </div>
+      <div class="field">
+        <label for="pomodoroLongBreakMinsInput">Long break</label>
+        <input type="number" id="pomodoroLongBreakMinsInput" min="1" max="180" value="15">
+      </div>
+      <div class="field">
+        <label for="pomodoroCyclesInput">Focus sessions before a long break</label>
+        <input type="number" id="pomodoroCyclesInput" min="1" max="12" value="4">
+      </div>
+      <div class="field">
+        <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+          <input type="checkbox" id="pomodoroSoundToggle" style="width:auto;" checked>
+          Play a chime when a phase ends
+        </label>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn btn-ghost" id="pomodoroSettingsCancelBtn">Cancel</button>
+        <button class="btn btn-primary" id="pomodoroSettingsSaveBtn">Save</button>
+      </div>
+    </div>
+  </div>
+
   <!-- SIDE TUTOR DRAWER (Socratic help, reachable from inside quiz/exam) -->
   <div class="side-tutor-drawer" id="sideTutorDrawer">
     <div class="side-tutor-header">
@@ -593,23 +932,31 @@
          2. api.js       — AI provider calls, quota, grading cache
          3. utils.js     — escapeHtml, markdown formatter, error-retry UI
          4. themes.js    — theme switching + swatch picker
-         5. deck.js       — flashcard deck, study/quiz/exam engines
-         6. socratic.js    — main Socratic tutor chat
-         7. maker.js         — mock quiz & exam maker
-         8. side-tutor.js      — in-quiz "ask the tutor" drawer
-         9. gwa.js               — GWA calculator
-        10. settings.js           — settings modal + data backup
-        11. main.js                — nav/view switching + app init (LAST)
+         5. srs.js         — spaced-repetition scheduler (SM-2)
+         6. deck.js         — flashcard deck, study/quiz/exam engines
+         7. socratic.js       — main Socratic tutor chat
+         8. maker.js             — mock quiz & exam maker
+         9. side-tutor.js          — in-quiz "ask the tutor" drawer
+        10. gwa.js                   — GWA calculator
+        11. planner.js                 — task/schedule planner
+        12. watch.js                      — Watch & Note (YouTube + timestamped notes/whiteboard)
+        13. settings.js                     — settings modal + data backup
+        14. main.js                           — nav/view switching + app init (LAST)
   ==================================================================== -->
   <script src="js/config.js"></script>
   <script src="js/api.js"></script>
   <script src="js/utils.js"></script>
   <script src="js/themes.js"></script>
+  <script src="js/srs.js"></script>
   <script src="js/deck.js"></script>
   <script src="js/socratic.js"></script>
   <script src="js/maker.js"></script>
   <script src="js/side-tutor.js"></script>
   <script src="js/gwa.js"></script>
+  <script src="js/planner.js"></script>
+  <script src="js/notes.js"></script>
+  <script src="js/pomodoro.js"></script>
+  <script src="js/watch.js"></script>
   <script src="js/settings.js"></script>
   <script src="js/main.js"></script>
 </body>
