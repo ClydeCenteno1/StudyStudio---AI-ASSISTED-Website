@@ -1,4 +1,3 @@
-
 // ============================================================
 // StudyStudio — GWA Calculator
 // Philippine 1.00–5.00 GWA scale calculator. Row state now
@@ -31,9 +30,8 @@
       gwaRowCount++;
       const rowId = 'gwaRow' + gwaRowCount;
       const row = document.createElement('div');
-      row.className = 'maker-row';
+      row.className = 'maker-row gwa-row';
       row.id = rowId;
-      row.style.cssText = 'display:grid; grid-template-columns: 1fr 1fr 80px 90px auto; gap:10px; align-items:end; margin-bottom:10px;';
 
       const gradeOptionsHtml = GWA_GRADE_OPTIONS.map(g =>
         `<option value="${g.value}"${prefill && prefill.grade === g.value ? ' selected' : ''}>${g.label}</option>`

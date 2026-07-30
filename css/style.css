@@ -1,4 +1,3 @@
-
 /*
       Base variable values live here as a fallback only.
       The actual active palette is supplied by css/themes.css via
@@ -1538,7 +1537,9 @@
     }
 
     /* ---------- MOCK MAKER ---------- */
-    #makerView {
+    #makerView,
+    #gwaView,
+    #plannerView {
       overflow-y: auto;
     }
 
@@ -1914,6 +1915,148 @@
       gap: 16px;
     }
 
+    .gwa-row {
+      grid-template-columns: 1fr 1fr 80px 90px auto;
+      gap: 10px;
+      align-items: end;
+      margin-bottom: 10px;
+    }
+
+    @media (max-width: 640px) {
+      .gwa-row {
+        grid-template-columns: 1fr 1fr;
+        row-gap: 10px;
+        column-gap: 10px;
+        align-items: end;
+        margin-bottom: 14px;
+        padding-bottom: 14px;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .gwa-row .maker-field:first-child {
+        grid-column: 1 / -1;
+      }
+
+      .gwa-row .gwa-units-input,
+      .gwa-row .gwa-grade-select {
+        min-height: 40px;
+      }
+
+      .gwa-row .maker-field:nth-child(4) {
+        display: flex;
+        flex-direction: row-reverse;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 8px;
+      }
+
+      .gwa-row .maker-field:nth-child(4) label {
+        margin: 0;
+      }
+
+      .gwa-row .gwa-exclude-checkbox {
+        width: 22px !important;
+        height: 22px !important;
+        margin-top: 0 !important;
+      }
+
+      .gwa-row .gwa-remove-row-btn {
+        width: 40px;
+        height: 40px;
+        margin-bottom: 0 !important;
+      }
+    }
+
+    /* ---------- GWA grade scale reference ---------- */
+    .gwa-scale-details {
+      margin-top: 20px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    .gwa-scale-summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 14px;
+      font-size: 13.5px;
+      font-weight: 500;
+      color: var(--ink);
+      cursor: pointer;
+      list-style: none;
+      user-select: none;
+    }
+
+    .gwa-scale-summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .gwa-scale-chevron {
+      color: var(--ink-soft);
+      transition: transform 0.15s ease;
+      font-size: 16px;
+    }
+
+    .gwa-scale-details[open] .gwa-scale-chevron {
+      transform: rotate(90deg);
+    }
+
+    .gwa-scale-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      border-top: 1px solid var(--border);
+    }
+
+    .gwa-scale-table th {
+      text-align: left;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--ink-soft);
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      padding: 8px 14px;
+      background: var(--bg-alt);
+    }
+
+    .gwa-scale-table td {
+      padding: 7px 14px;
+      color: var(--ink);
+      border-top: 1px solid var(--border);
+    }
+
+    .gwa-scale-table td:first-child {
+      font-family: 'IBM Plex Mono', monospace;
+      font-weight: 600;
+      color: var(--accent);
+    }
+
+    .gwa-scale-table td:last-child {
+      color: var(--ink-soft);
+    }
+
+    .gwa-scale-footnote {
+      font-size: 12px;
+      line-height: 1.6;
+      color: var(--ink-soft);
+      padding: 10px 14px 14px;
+      margin: 0;
+      border-top: 1px solid var(--border);
+    }
+
+    @media (max-width: 640px) {
+      .gwa-scale-table {
+        font-size: 12.5px;
+      }
+
+      .gwa-scale-table th,
+      .gwa-scale-table td {
+        padding: 7px 10px;
+      }
+    }
+
     .file-drop-zone {
       border: 1.5px dashed var(--border);
       border-radius: 10px;
@@ -2258,6 +2401,23 @@
 
       .planner-add-form button {
         width: 100%;
+      }
+
+      .planner-card-del {
+        width: 28px;
+        height: 28px;
+        font-size: 14px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .planner-column-body {
+        gap: 8px;
+      }
+
+      .planner-filters {
+        align-items: stretch;
       }
 
       .deck-toolbar {
@@ -3277,9 +3437,42 @@
     }
 
     @media (max-width: 860px) {
+      .watch-editor-main {
+        padding: 12px;
+        gap: 10px;
+      }
+
       .watch-editor-panes {
         grid-template-columns: 1fr;
-        grid-template-rows: 240px 1fr;
+        grid-template-rows: minmax(180px, 32vh) 1fr;
+        gap: 10px;
+      }
+
+      .watch-side-pane {
+        min-height: 360px;
+      }
+
+      #watchWhiteboardCanvas {
+        min-height: 320px;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .watch-editor-panes {
+        grid-template-rows: minmax(160px, 28vh) 1fr;
+      }
+
+      .watch-side-pane {
+        min-height: 320px;
+      }
+
+      #watchWhiteboardCanvas {
+        min-height: 280px;
+      }
+
+      .watch-wb-toolbar {
+        flex-wrap: wrap;
+        row-gap: 8px;
       }
     }
 
