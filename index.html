@@ -781,6 +781,22 @@
   <!-- FLOATING "ASK THE TUTOR" BUTTON (shown while inside a maker quiz/exam) -->
   <button class="float-tutor-fab" id="floatTutorFab">🏛️ Ask the Tutor</button>
 
+  <!-- FLOATING "ASK ABOUT THIS VIDEO" BUTTON (shown only while on the Watch tab) -->
+  <button class="float-tutor-fab" id="watchTutorFab" style="bottom: 96px;">🏛️ Ask about this video</button>
+
+  <!-- WATCH TUTOR DRAWER (Socratic help scoped to whatever video is currently loaded) -->
+  <div class="side-tutor-drawer" id="watchTutorDrawer">
+    <div class="side-tutor-header">
+      <h4>🏛️ Ask about this video</h4>
+      <button class="icon-btn" id="closeWatchTutorBtn" title="Close">✕</button>
+    </div>
+    <div class="side-tutor-chat" id="watchTutorChat"></div>
+    <div class="side-tutor-composer">
+      <textarea id="watchTutorInput" placeholder="Ask what's confusing you…"></textarea>
+      <button class="btn btn-primary" id="watchTutorSendBtn">Send</button>
+    </div>
+  </div>
+
   <!-- FLOATING POMODORO WIDGET (available from any view) -->
   <div class="pomodoro-widget" id="pomodoroWidget" data-phase="work">
     <button class="pomodoro-pill" id="pomodoroExpandBtn" title="Expand timer">
@@ -939,7 +955,7 @@
          9. side-tutor.js          — in-quiz "ask the tutor" drawer
         10. gwa.js                   — GWA calculator
         11. planner.js                 — task/schedule planner
-        12. watch.js                      — Watch & Note (YouTube + timestamped notes/whiteboard)
+        12. watch.js                      — Watch & Note (YouTube + timestamped notes/whiteboard + video tutor chat)
         13. settings.js                     — settings modal + data backup
         14. main.js                           — nav/view switching + app init (LAST)
   ==================================================================== -->

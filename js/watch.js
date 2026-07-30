@@ -42,6 +42,7 @@ function createWatchSession() {
     videoId: null,
     notes: [],          // [{id, seconds, text}]
     whiteboardData: null, // data URL PNG, or null
+    tutorHistory: [],   // [{role:'user'|'model', parts:[{text}]}] — video-aware Socratic chat
     updatedAt: new Date().toISOString()
   };
   watchSessions.unshift(session);
@@ -158,6 +159,7 @@ function loadWatchSessionIntoEditor(sessionId) {
   renderWatchNotesList();
   setWatchMode('notes');
   loadWhiteboardForSession(session);
+  loadWatchTutorChat(session);
 }
 
 function updateWatchSavedStamp(isoString) {
@@ -213,14 +215,24 @@ document.getElementById('watchLoadUrlBtn').addEventListener('click', loadWatchUr
 // .../embed/VIDEO_ID?enablejsapi=1"> with postMessage control is far
 // more robust and is exactly what YT.Player does under the hood
 // anyway — this just skips the part that's failing.
-let watchIframeReady = false;
+//
+// Time tracking uses YouTube's real "listening" handshake: once the
+// iframe finishes loading, we post {event:'listening'} to it. From
+// then on YouTube automatically pushes {event:'infoDelivery', info:
+// {currentTime, ...}} messages a few times a second on its own —
+// there's no "getCurrentTime" command that replies with a value, so
+// polling for one (as an earlier version of this file did) never
+// receives anything back and currentTime silently stays null.
+let watchLastKnownSeconds = null;
+let watchListeningInterval = null;
 
 function mountWatchPlayer(videoId) {
   document.getElementById('watchVideoPlaceholder').style.display = 'none';
   document.getElementById('watchPlayerMount').style.display = 'block';
 
   const mount = document.getElementById('watchPlayerMount');
-  watchIframeReady = false;
+  watchLastKnownSeconds = null;
+  clearInterval(watchListeningInterval);
 
   const origin = encodeURIComponent(window.location.origin);
   mount.innerHTML = `<iframe id="watchYtIframe"
@@ -229,6 +241,26 @@ function mountWatchPlayer(videoId) {
     allowfullscreen></iframe>`;
 
   watchPlayer = document.getElementById('watchYtIframe');
+
+  // The iframe isn't guaranteed to be ready for postMessage the instant
+  // its src is set, and there's no reliable onload timing across
+  // browsers for this specific case — so send the "listening" handshake
+  // repeatedly for the first few seconds after mounting. Once the
+  // player actually receives one, it starts pushing infoDelivery
+  // messages on its own and further handshakes are harmless no-ops.
+  let attempts = 0;
+  watchListeningInterval = setInterval(() => {
+    attempts++;
+    sendWatchListeningHandshake();
+    if (attempts >= 10) clearInterval(watchListeningInterval); // ~5s of retries is plenty
+  }, 500);
+}
+
+function sendWatchListeningHandshake() {
+  if (!watchPlayer || !watchPlayer.contentWindow) return;
+  try {
+    watchPlayer.contentWindow.postMessage(JSON.stringify({event: 'listening', id: 'watchYtIframe'}), '*');
+  } catch (e) { /* iframe not ready yet — next retry will catch it */ }
 }
 
 function unmountWatchPlayer() {
@@ -236,7 +268,8 @@ function unmountWatchPlayer() {
   document.getElementById('watchPlayerMount').style.display = 'none';
   document.getElementById('watchPlayerMount').innerHTML = '';
   watchPlayer = null;
-  watchIframeReady = false;
+  watchLastKnownSeconds = null;
+  clearInterval(watchListeningInterval);
 }
 
 // Sends a command to the embedded player via postMessage, per
@@ -252,12 +285,6 @@ function postToWatchPlayer(func, args) {
   } catch (e) { /* iframe not ready yet — safe to ignore */ }
 }
 
-// Listens for the player's state/time broadcasts. YouTube's embed
-// only pushes this data if we first ask it to (via 'listening'
-// handshake below); we keep the latest known time in memory so
-// getWatchCurrentSeconds() has something to read synchronously.
-let watchLastKnownSeconds = null;
-
 window.addEventListener('message', (e) => {
   if (!watchPlayer || e.source !== watchPlayer.contentWindow) return;
   let data;
@@ -267,19 +294,7 @@ window.addEventListener('message', (e) => {
   if (data.event === 'infoDelivery' && data.info && typeof data.info.currentTime === 'number') {
     watchLastKnownSeconds = Math.floor(data.info.currentTime);
   }
-  if (data.event === 'onReady' || data.event === 'onStateChange') {
-    watchIframeReady = true;
-    // Ask the player to keep sending time updates.
-    postToWatchPlayer('addEventListener', ['onStateChange']);
-  }
 });
-
-// Polls the player for its current time every second while a video
-// is loaded, since infoDelivery events don't fire reliably on their
-// own without active playback.
-setInterval(() => {
-  if (watchPlayer) postToWatchPlayer('getCurrentTime');
-}, 1000);
 
 // Returns the current playback time in whole seconds, or null if no
 // player is active yet / no time has been reported.
@@ -303,12 +318,24 @@ function seekWatchTo(seconds) {
 }
 
 // ---------- Notes mode ----------
+// Matches a "[mm:ss] " or "[h:mm:ss] " prefix already sitting at the
+// start of the textarea, so re-clicking "Insert timestamp" replaces
+// the old stamp instead of stacking a new one in front of it.
+const WATCH_STAMP_PREFIX_RE = /^\[(?:\d{1,2}:)?\d{1,2}:\d{2}\]\s*/;
+
 function insertWatchTimestamp() {
   const seconds = getWatchCurrentSeconds();
   const input = document.getElementById('watchNoteInput');
-  const stamp = seconds === null ? '[no video loaded] ' : `[${formatWatchTimestamp(seconds)}] `;
-  input.value = stamp + input.value;
-  input.dataset.pendingSeconds = seconds === null ? '' : String(seconds);
+
+  if (seconds === null) {
+    alert("No video is loaded yet (or it just started buffering) — paste a link and hit Load first, then try again once playback starts.");
+    return;
+  }
+
+  const stamp = `[${formatWatchTimestamp(seconds)}] `;
+  const withoutOldStamp = input.value.replace(WATCH_STAMP_PREFIX_RE, '');
+  input.value = stamp + withoutOldStamp;
+  input.dataset.pendingSeconds = String(seconds);
   input.focus();
 }
 
@@ -581,6 +608,179 @@ function closeWatchSidebar() {
 document.getElementById('watchSidebarToggleBtn').addEventListener('click', openWatchSidebar);
 watchSidebarScrimEl.addEventListener('click', closeWatchSidebar);
 
+// ============================================================
+// Video Tutor Chat — "Ask about this video"
+// A Socratic tutor scoped to the currently loaded video: it's told
+// the video's title/URL and (each time the drawer is opened or a
+// message sent) the current playback timestamp, so "what does this
+// part mean?" actually has something to go on. History is stored
+// per-session (session.tutorHistory) so switching videos gives a
+// fresh, separate conversation rather than one long mixed thread.
+// Mirrors js/side-tutor.js's structure closely.
+// Depends on: config.js, api.js, utils.js
+// ============================================================
+
+const watchTutorFabEl = document.getElementById('watchTutorFab');
+const watchTutorDrawerEl = document.getElementById('watchTutorDrawer');
+const watchTutorChatEl = document.getElementById('watchTutorChat');
+const watchTutorInputEl = document.getElementById('watchTutorInput');
+
+function loadWatchTutorChat(session) {
+  watchTutorChatEl.innerHTML = '';
+  const history = (session && session.tutorHistory) || [];
+
+  if (history.length === 0) {
+    watchTutorChatEl.innerHTML = `
+      <div class="msg-row tutor">
+        <div class="bubble">
+          <span class="tutor-label">VIDEO TUTOR</span>
+          <p>Ask me anything about the video you're watching — I can see its title and roughly where you are in it.</p>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  history.forEach(msg => {
+    appendWatchTutorBubble(msg.role === 'user' ? 'user' : 'tutor', msg.parts[0].text);
+  });
+}
+
+function appendWatchTutorBubble(role, text) {
+  const row = document.createElement('div');
+  row.className = `msg-row ${role}`;
+  const formattedText = role === 'user' ? escapeHtml(text) : formatMarkdown(text);
+  row.innerHTML = `
+    <div class="bubble">
+      ${role === 'tutor' ? '<span class="tutor-label">VIDEO TUTOR</span>' : ''}
+      <p>${formattedText}</p>
+    </div>
+  `;
+  watchTutorChatEl.appendChild(row);
+  watchTutorChatEl.scrollTop = watchTutorChatEl.scrollHeight;
+
+  if (role === 'tutor' && window.renderMathInElement) {
+    renderMathInElement(row, {
+      delimiters: [
+        {left: "$$", right: "$$", display: true},
+        {left: "$", right: "$", display: false},
+        {left: "\\(", right: "\\)", display: false},
+        {left: "\\[", right: "\\]", display: true}
+      ],
+      throwOnError: false
+    });
+  }
+}
+
+function buildWatchTutorSystemInstruction(session) {
+  const seconds = getWatchCurrentSeconds();
+  const timestampNote = seconds !== null
+    ? `The student is currently at ${formatWatchTimestamp(seconds)} in the video.`
+    : `No video is currently loaded/playing.`;
+
+  return `You are a patient Socratic tutor helping a student understand a YouTube video they're watching while taking notes. ` +
+    `Video title/URL (as entered by the student, may just be a raw link): "${session.title || session.url || 'unknown'}". ` +
+    `${timestampNote} You don't have the ability to watch the video yourself or see its transcript, so if the student asks something very specific to on-screen content you can't know, say so plainly and ask them to describe or quote what's confusing them instead of guessing. ` +
+    `Guide with targeted questions rather than immediately giving full answers, unless they ask you to just explain it directly. ` +
+    `Use standard LaTeX for math: wrap inline math in single dollar signs like $\\frac{1}{2}$, and larger equations in double dollar signs like $$x^2+5x+6=0$$. Always leave a space before and after each $ or $$ delimiter. Never wrap normal English words inside math mode without \\text{}. Proofread your own response before sending it: never repeat the same word, phrase, or sentence twice in a row.`;
+}
+
+async function sendWatchTutorMessage() {
+  const text = watchTutorInputEl.value.trim();
+  if (!text) return;
+  if (!getKey()) { openSettings(); return; }
+
+  const session = getCurrentWatchSession();
+  if (!session) return;
+
+  appendWatchTutorBubble('user', text);
+  watchTutorInputEl.value = '';
+
+  session.tutorHistory = session.tutorHistory || [];
+  session.tutorHistory.push({role: 'user', parts: [{text}]});
+  touchCurrentWatchSession();
+
+  const systemInstruction = buildWatchTutorSystemInstruction(session);
+
+  try {
+    const {text: aiReply} = await callAI({
+      systemInstruction,
+      contents: session.tutorHistory
+    });
+
+    session.tutorHistory.push({role: 'model', parts: [{text: aiReply}]});
+    touchCurrentWatchSession();
+    appendWatchTutorBubble('tutor', aiReply);
+
+    if (getProvider() === 'gemini') {
+      const remaining = getRemainingGeminiRequests();
+      if (remaining === 5 || remaining === 1) {
+        appendWatchTutorBubble('tutor', `Heads up — you have ${remaining} free Gemini request${remaining === 1 ? '' : 's'} left today. You can switch to Groq in Settings if you'd like to keep going without waiting.`);
+      }
+    }
+  } catch (e) {
+    console.error('Watch tutor error:', e);
+    appendErrorBubbleWithRetry(
+      watchTutorChatEl,
+      `An error occurred while connecting to the AI tutor: ${e.message || 'unknown error'}`,
+      () => resendWatchTutorTurn(session, systemInstruction)
+    );
+  }
+}
+
+async function resendWatchTutorTurn(session, systemInstruction) {
+  try {
+    const {text: aiReply} = await callAI({
+      systemInstruction,
+      contents: session.tutorHistory
+    });
+    session.tutorHistory.push({role: 'model', parts: [{text: aiReply}]});
+    touchCurrentWatchSession();
+    appendWatchTutorBubble('tutor', aiReply);
+  } catch (e) {
+    console.error('Watch tutor retry error:', e);
+    appendErrorBubbleWithRetry(
+      watchTutorChatEl,
+      `Still couldn't connect: ${e.message || 'unknown error'}`,
+      () => resendWatchTutorTurn(session, systemInstruction)
+    );
+  }
+}
+
+function openWatchTutorDrawer() {
+  watchTutorDrawerEl.classList.add('open');
+}
+function closeWatchTutorDrawer() {
+  watchTutorDrawerEl.classList.remove('open');
+}
+
+watchTutorFabEl.addEventListener('click', openWatchTutorDrawer);
+document.getElementById('closeWatchTutorBtn').addEventListener('click', closeWatchTutorDrawer);
+document.getElementById('watchTutorSendBtn').addEventListener('click', sendWatchTutorMessage);
+watchTutorInputEl.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendWatchTutorMessage(); }
+});
+
+// The FAB should only appear while the Watch tab itself is open — on
+// every other tab it would just be a stray floating button with
+// nothing relevant to answer. main.js's switchToView() doesn't know
+// about Watch specifics, so this listens for the Watch nav tab/landing
+// tile clicks directly rather than requiring an edit to main.js's
+// generic view-switch logic.
+function updateWatchTutorFabVisibility() {
+  const watchViewEl = document.getElementById('watchView');
+  const isOnWatchTab = watchViewEl && watchViewEl.classList.contains('active');
+  watchTutorFabEl.classList.toggle('visible', !!isOnWatchTab);
+  if (!isOnWatchTab) closeWatchTutorDrawer();
+}
+
+['tabWatchBtn', 'landingWatchBtn', 'tabNotesBtn', 'tabDeckBtn', 'tabMakerBtn', 'tabSocraticBtn', 'tabGwaBtn', 'tabPlannerBtn',
+ 'landingNotesBtn', 'landingFlashcardBtn', 'landingMakerBtn', 'landingSocraticBtn', 'landingGwaBtn', 'landingPlannerBtn', 'backToMenuBtn'
+].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('click', () => setTimeout(updateWatchTutorFabVisibility, 0));
+});
+
 // ---------- Init ----------
 renderWatchWbColorSwatches();
 renderWatchSessionList();
@@ -590,3 +790,4 @@ if (watchSessions.length) {
 } else {
   showWatchEmptyEditor();
 }
+updateWatchTutorFabVisibility();
